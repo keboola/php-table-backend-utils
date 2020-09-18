@@ -154,8 +154,42 @@ class SynapseTableQueryBuilderTest extends SynapseBaseCase
 
         $this->connection->exec($sql);
 
+        // try to drop table again will throw exception
+        $sql = $qb->getDropTableCommand(self::TEST_SCHEMA, self::TEST_TABLE);
+        try {
+            $this->connection->exec($sql);
+            $this->fail('DROP TABLE on NOT existing TABLE should fail.');
+        } catch (DBALException $e) {
+            // we don't care about exception here
+        }
+
+        // try to drop table again with ifExists
+        $sql = $qb->getDropTableCommand(self::TEST_SCHEMA, self::TEST_TABLE, true);
+        $this->assertEquals(
+        // phpcs:ignore
+            'IF OBJECT_ID (N\'[utils-test_qb-schema].[utils-test_test]\', N\'U\') IS NOT NULL DROP TABLE [utils-test_qb-schema].[utils-test_test]',
+            $sql
+        );
+        // should not throw exception
+        $this->connection->exec($sql);
+
         $ref = new SynapseTableReflection($this->connection, self::TEST_SCHEMA, self::TEST_TABLE_2);
         $this->assertNotNull($ref->getObjectId());
+        // try to drop table again with if exists on test2
+        $sql = $qb->getDropTableCommand(self::TEST_SCHEMA, self::TEST_TABLE_2, true);
+        $this->assertEquals(
+        // phpcs:ignore
+            'IF OBJECT_ID (N\'[utils-test_qb-schema].[utils-test_test2]\', N\'U\') IS NOT NULL DROP TABLE [utils-test_qb-schema].[utils-test_test2]',
+            $sql
+        );
+        $this->connection->exec($sql);
+
+        try {
+            $ref->getObjectId();
+            $this->fail('table should not exist.');
+        } catch (ReflectionException $e) {
+            // expected
+        }
 
         $ref = $this->getSynapseTableReflection();
         $this->expectException(ReflectionException::class);

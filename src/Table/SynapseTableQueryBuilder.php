@@ -100,13 +100,27 @@ class SynapseTableQueryBuilder implements TableQueryBuilderInterface
 
     public function getDropTableCommand(
         string $schemaName,
-        string $tableName
+        string $tableName,
+        bool $ifExists = false
     ): string {
-        return sprintf(
-            'DROP TABLE %s.%s',
+        $table = sprintf(
+            '%s.%s',
             $this->platform->quoteSingleIdentifier($schemaName),
             $this->platform->quoteSingleIdentifier($tableName)
         );
+        if ($ifExists) {
+            $sql = sprintf(
+                'IF OBJECT_ID (N\'%s\', N\'U\') IS NOT NULL DROP TABLE %s',
+                $table,
+                $table
+            );
+        } else {
+            $sql = sprintf(
+                'DROP TABLE %s',
+                $table
+            );
+        }
+        return $sql;
     }
 
     public function getRenameTableCommand(

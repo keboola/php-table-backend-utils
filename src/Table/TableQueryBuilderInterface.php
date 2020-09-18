@@ -14,7 +14,11 @@ interface TableQueryBuilderInterface
         ColumnCollection $columns
     ): string;
 
-    public function getDropTableCommand(string $schemaName, string $tableName): string;
+    public function getDropTableCommand(
+        string $schemaName,
+        string $tableName,
+        bool $ifExists = false
+    ): string;
 
     public function getRenameTableCommand(string $schemaName, string $sourceTableName, string $newTableName): string;
 
