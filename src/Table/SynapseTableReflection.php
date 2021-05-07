@@ -10,6 +10,8 @@ use Doctrine\DBAL\Platforms\SQLServer2012Platform;
 use Keboola\TableBackendUtils\Column\ColumnCollection;
 use Keboola\TableBackendUtils\Column\SynapseColumn;
 use Keboola\TableBackendUtils\ReflectionException;
+use Keboola\TableBackendUtils\Table\Synapse\TableDistributionDefinition;
+use Keboola\TableBackendUtils\Table\Synapse\TableIndexDefinition;
 use function Keboola\Utils\returnBytes;
 
 final class SynapseTableReflection implements TableReflectionInterface
@@ -264,8 +266,7 @@ EOT
     }
 
     /**
-     * @return 'ROUND_ROBIN'|'HASH'|'REPLICATE'
-     * @throws \Doctrine\DBAL\DBALException
+     * @return TableDistributionDefinition::TABLE_DISTRIBUTION_*
      */
     public function getTableDistribution(): string
     {
