@@ -719,7 +719,49 @@ class SynapseTableReflectionTest extends SynapseBaseCase
         self::assertEquals($expectedDistributionKeys, $ref->getTableDistributionColumnsNames());
     }
 
+    /**
+     * @return Generator<array{
+     *     string,
+     *     string,
+     * }>
+     */
+    public function tableIndexProvider(): \Generator
+    {
+        yield 'CLUSTERED COLUMNSTORE INDEX' => [
+            'CLUSTERED COLUMNSTORE INDEX',
+            'CLUSTERED COLUMNSTORE INDEX',
+        ];
+        yield 'HEAP' => [
+            'HEAP',
+            'HEAP',
+        ];
+        yield 'CLUSTERED INDEX' => [
+            'CLUSTERED INDEX (int_def)',
+            'CLUSTERED INDEX',
+        ];
+    }
 
+    /**
+     * @dataProvider tableIndexProvider
+     */
+    public function testGetTableIndexName(string $with, string $expectedIndexType): void
+    {
+        self::markTestIncomplete('getTableIndexType now returns only CCI statically.');
+        $this->connection->exec(
+            sprintf(
+                'CREATE TABLE [%s].[%s] (
+          [int_def] INT
+        )
+        WITH(%s)
+        ;',
+                self::TEST_SCHEMA,
+                self::TABLE_GENERIC,
+                $with
+            )
+        );
+        $ref = new SynapseTableReflection($this->connection, self::TEST_SCHEMA, self::TABLE_GENERIC);
+        self::assertEquals($expectedIndexType, $ref->getTableIndexType());
+    }
 
     private function initView(string $viewName, string $parentName): void
     {
