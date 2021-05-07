@@ -10,6 +10,7 @@ use Doctrine\DBAL\Platforms\SQLServer2012Platform;
 use Keboola\TableBackendUtils\Column\ColumnCollection;
 use Keboola\TableBackendUtils\Column\ColumnInterface;
 use Keboola\TableBackendUtils\QueryBuilderException;
+use Keboola\TableBackendUtils\Table\Synapse\TableIndexDefinition;
 
 class SynapseTableQueryBuilder implements TableQueryBuilderInterface
 {
@@ -95,6 +96,68 @@ class SynapseTableQueryBuilder implements TableQueryBuilderInterface
             $this->platform->quoteSingleIdentifier($tableName),
             implode(', ', $columnsSql),
             $primaryKeySql
+        );
+    }
+
+    public function getCreateTableCommandFromDefinition(
+        SynapseTableDefinition $definition,
+        bool $definePrimaryKeys = false
+    ): string {
+        $columnsSql = [];
+        foreach ($definition->getColumnsDefinitions() as $column) {
+            $columnsSql[] = sprintf(
+                '%s %s',
+                $this->platform->quoteSingleIdentifier($column->getColumnName()),
+                $column->getColumnDefinition()->getSQLDefinition()
+            );
+        }
+
+        $primaryKeySql = '';
+        if ($definePrimaryKeys === true && count($definition->getPrimaryKeysNames()) !== 0) {
+            $quotedPrimaryKeys = array_map(function ($columnName) {
+                return $this->platform->quoteSingleIdentifier($columnName);
+            }, $definition->getPrimaryKeysNames());
+            $primaryKeySql = sprintf(
+                ', PRIMARY KEY NONCLUSTERED(%s) NOT ENFORCED',
+                implode(',', $quotedPrimaryKeys)
+            );
+        }
+        if ($definition->getTableDistribution()->isHashDistribution()) {
+            $quotedColumns = array_map(function ($columnName) {
+                return $this->platform->quoteSingleIdentifier($columnName);
+            }, $definition->getTableDistribution()->getDistributionColumnsNames());
+            $distributionSql = sprintf(
+                'DISTRIBUTION = %s(%s)',
+                $definition->getTableDistribution()->getDistributionName(),
+                implode(',', $quotedColumns)
+            );
+        } else {
+            $distributionSql = sprintf(
+                'DISTRIBUTION = %s',
+                $definition->getTableDistribution()->getDistributionName()
+            );
+        }
+        if ($definition->getTableIndex()->getIndexType() === TableIndexDefinition::TABLE_INDEX_TYPE_CI) {
+            $quotedColumns = array_map(function ($columnName) {
+                return $this->platform->quoteSingleIdentifier($columnName);
+            }, $definition->getTableIndex()->getIndexedColumnsNames());
+            $indexSql = sprintf(
+                '%s(%s)',
+                $definition->getTableIndex()->getIndexType(),
+                implode(',', $quotedColumns)
+            );
+        } else {
+            $indexSql = $definition->getTableIndex()->getIndexType();
+        }
+
+        return sprintf(
+            'CREATE TABLE %s.%s (%s%s) WITH (%s,%s)',
+            $this->platform->quoteSingleIdentifier($definition->getSchemaName()),
+            $this->platform->quoteSingleIdentifier($definition->getTableName()),
+            implode(', ', $columnsSql),
+            $primaryKeySql,
+            $distributionSql,
+            $indexSql
         );
     }
 
