@@ -10,6 +10,8 @@ interface TableDefinitionInterface
 {
     public function getTableName(): string;
 
+    public function getSchemaName(): string;
+
     /**
      * @return string[]
      */
