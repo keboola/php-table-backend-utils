@@ -53,12 +53,5 @@ class ExasolTableQueryBuilderTest extends TestCase
             'primaryKeys' => ['colNotExisting'],
             'exceptionString' => 'Trying to set colNotExisting as PKs but not present in columns',
         ];
-        yield 'pk on nullable type' => [
-            'cols' => [
-                new ExasolColumn('col1', new Exasol(Exasol::TYPE_VARCHAR, ['nullable' => true])),
-            ],
-            'primaryKeys' => ['col1'],
-            'exceptionString' => 'Trying to set PK on column col1 but this column is nullable',
-        ];
     }
 }

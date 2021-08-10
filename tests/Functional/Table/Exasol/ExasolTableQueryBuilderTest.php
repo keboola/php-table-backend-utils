@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Keboola\TableBackendUtils\Functional\Table\Exasol;
 
 use Doctrine\DBAL\Exception as DBALException;
+use Keboola\Datatype\Definition\Exasol;
 use Keboola\TableBackendUtils\Column\ColumnCollection;
 use Keboola\TableBackendUtils\Column\Exasol\ExasolColumn;
 use Keboola\TableBackendUtils\Table\Exasol\ExasolTableDefinition;
@@ -187,6 +188,34 @@ CREATE TABLE "$testDb"."$tableName"
 "col1" VARCHAR (2000000) DEFAULT '' NOT NULL,
 "col2" VARCHAR (2000000) DEFAULT '' NOT NULL,
 CONSTRAINT PRIMARY KEY ("col1","col2")
+);
+EOT
+            ,
+        ];
+
+        yield 'pk nullable' => [
+            'cols' => [
+                new ExasolColumn(
+                    'col1',
+                    new Exasol(
+                        Exasol::TYPE_VARCHAR,
+                        [
+                            'length' => '2000000',
+                            'nullable' => true,
+                        ]
+                    )
+                ),
+                ExasolColumn::createGenericColumn('col2'),
+            ],
+            'primaryKeys' => ['col1'],
+            'expectedColumnNames' => ['col1', 'col2'],
+            'expectedPrimaryKeys' => ['col1'],
+            'query' => <<<EOT
+CREATE TABLE "$testDb"."$tableName"
+(
+"col1" VARCHAR (2000000),
+"col2" VARCHAR (2000000) DEFAULT '' NOT NULL,
+CONSTRAINT PRIMARY KEY ("col1")
 );
 EOT
             ,

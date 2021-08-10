@@ -73,15 +73,6 @@ class ExasolTableQueryBuilder implements TableQueryBuilderInterface
             /** @var Exasol $columnDefinition */
             $columnDefinition = $column->getColumnDefinition();
 
-            // check if PK can be defined on selected columns
-            if ($primaryKeys && in_array($columnName, $primaryKeys, true)
-                && $columnDefinition->isNullable()) {
-                throw new QueryBuilderException(
-                    sprintf('Trying to set PK on column %s but this column is nullable', $columnName),
-                    self::INVALID_PKS_FOR_TABLE
-                );
-            }
-
             $columnsSqlDefinitions[] = sprintf(
                 '%s %s',
                 ExasolQuote::quoteSingleIdentifier($columnName),
