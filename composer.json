@@ -5,7 +5,7 @@
     "require": {
         "php": "^7.1",
         "ext-pdo": "*",
-        "doctrine/dbal": "^2.9",
+        "doctrine/dbal": "^2.13",
         "keboola/common-exceptions": "^1",
         "keboola/php-datatypes": "^4.11.0",
         "keboola/php-utils": "^4.1"
