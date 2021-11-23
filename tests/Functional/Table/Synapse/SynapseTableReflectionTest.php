@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace Tests\Keboola\TableBackendUtils\Functional\Table\Synapse;
 
 use Generator;
+use Keboola\TableBackendUtils\Auth\Grant\Synapse\GrantOn;
+use Keboola\TableBackendUtils\Auth\Grant\Synapse\GrantOptions;
+use Keboola\TableBackendUtils\Auth\Grant\Synapse\Permission;
 use Keboola\TableBackendUtils\Column\ColumnCollection;
 use Keboola\TableBackendUtils\Column\SynapseColumn;
 use Keboola\TableBackendUtils\Escaping\SynapseQuote;
@@ -785,5 +788,201 @@ class SynapseTableReflectionTest extends SynapseBaseCase
                 SynapseQuote::quoteSingleIdentifier($parentName)
             )
         );
+    }
+
+    public function testWhoHasGrantOnTable(): void
+    {
+        $this->initTable();
+        $ref = new SynapseTableReflection(
+            $this->connection,
+            self::TEST_SCHEMA,
+            self::TABLE_GENERIC
+        );
+        $this->assertEmpty($ref->whoHasGrantOnTable());
+        $user = 'Test_who_has_grant_user';
+        $role = 'Test_who_has_grant_role';
+
+        $this->connection->executeStatement(sprintf(
+            <<<SQL
+IF EXISTS (
+    SELECT  [name]
+    FROM    sys.database_principals
+    WHERE   [name] = '%s'
+)
+BEGIN
+    DROP USER [%s];
+END
+SQL
+            ,
+            $user,
+            $user
+        ));
+        $this->connection->executeStatement(sprintf(
+            <<<SQL
+IF EXISTS (
+    SELECT  [NAME]
+    FROM    sys.database_principals
+    WHERE   [NAME] = '%s'
+)
+BEGIN
+    DROP ROLE [%s];
+END
+SQL
+            ,
+            $role,
+            $role
+        ));
+
+        $this->connection->executeStatement('CREATE USER [Test_who_has_grant_user] WITHOUT LOGIN');
+        $this->connection->executeStatement('CREATE ROLE [Test_who_has_grant_role]');
+
+        // grant user select and delete
+        $grantQb = new \Keboola\TableBackendUtils\Auth\SynapseGrantQueryBuilder();
+        $grantOptions = (new GrantOptions(
+            [Permission::GRANT_SELECT, Permission::GRANT_DELETE],
+            'Test_who_has_grant_user'
+        ))
+            ->grantOnSubject(GrantOn::ON_OBJECT)
+            ->setOnTargetPath([self::TEST_SCHEMA, self::TABLE_GENERIC]);
+        $this->connection->executeStatement($grantQb->getGrantSql($grantOptions));
+
+        $this->assertSame([
+            [
+                'name' => 'Test_who_has_grant_user',
+                'grant' => 'DELETE',
+
+            ],
+            [
+                'name' => 'Test_who_has_grant_user',
+                'grant' => 'SELECT',
+
+            ],
+        ], $ref->whoHasGrantOnTable());
+
+        $this->assertSame([
+            [
+                'name' => 'Test_who_has_grant_user',
+                'grant' => 'DELETE',
+
+            ],
+            [
+                'name' => 'Test_who_has_grant_user',
+                'grant' => 'SELECT',
+
+            ],
+        ], $ref->whoHasGrantOnTable(
+            [Permission::GRANT_SELECT, Permission::GRANT_DELETE]
+        ));
+
+        $this->assertSame([
+            [
+                'name' => 'Test_who_has_grant_user',
+                'grant' => 'SELECT',
+
+            ],
+        ], $ref->whoHasGrantOnTable(
+            [Permission::GRANT_SELECT]
+        ));
+
+        $this->assertSame([
+            [
+                'name' => 'Test_who_has_grant_user',
+                'grant' => 'SELECT',
+
+            ],
+        ], $ref->whoHasGrantOnTable(
+            [Permission::GRANT_SELECT],
+            ['SQL_USER']
+        ));
+
+        $this->assertSame([], $ref->whoHasGrantOnTable(
+            [Permission::GRANT_SELECT],
+            ['DATABASE_ROLE']
+        ));
+
+        // grant role insert
+        $grantOptions = (new GrantOptions(
+            [Permission::GRANT_INSERT],
+            'Test_who_has_grant_role'
+        ))
+            ->grantOnSubject(GrantOn::ON_OBJECT)
+            ->setOnTargetPath([self::TEST_SCHEMA, self::TABLE_GENERIC]);
+        $this->connection->executeStatement($grantQb->getGrantSql($grantOptions));
+
+        $this->assertSame([
+            [
+                'name' => 'Test_who_has_grant_user',
+                'grant' => 'DELETE',
+
+            ],
+            [
+                'name' => 'Test_who_has_grant_user',
+                'grant' => 'SELECT',
+
+            ],
+            [
+                'name' => 'Test_who_has_grant_role',
+                'grant' => 'INSERT',
+
+            ],
+        ], $ref->whoHasGrantOnTable());
+
+        $this->assertSame([
+            [
+                'name' => 'Test_who_has_grant_user',
+                'grant' => 'SELECT',
+
+            ],
+            [
+                'name' => 'Test_who_has_grant_role',
+                'grant' => 'INSERT',
+
+            ],
+        ], $ref->whoHasGrantOnTable(
+            [Permission::GRANT_SELECT, Permission::GRANT_INSERT]
+        ));
+
+        $this->assertSame([
+            [
+                'name' => 'Test_who_has_grant_user',
+                'grant' => 'SELECT',
+
+            ],
+        ], $ref->whoHasGrantOnTable(
+            [Permission::GRANT_SELECT]
+        ));
+
+        $this->assertSame([
+            [
+                'name' => 'Test_who_has_grant_user',
+                'grant' => 'SELECT',
+
+            ],
+        ], $ref->whoHasGrantOnTable(
+            [Permission::GRANT_SELECT],
+            ['SQL_USER']
+        ));
+
+        $this->assertSame([
+            [
+                'name' => 'Test_who_has_grant_role',
+                'grant' => 'INSERT',
+
+            ],
+        ], $ref->whoHasGrantOnTable(
+            [Permission::GRANT_INSERT],
+            ['DATABASE_ROLE']
+        ));
+
+        $this->assertSame([
+            [
+                'name' => 'Test_who_has_grant_role',
+                'grant' => 'INSERT',
+
+            ],
+        ], $ref->whoHasGrantOnTable(
+            [],
+            ['DATABASE_ROLE']
+        ));
     }
 }

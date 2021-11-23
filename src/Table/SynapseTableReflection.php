@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Keboola\TableBackendUtils\Table;
 
 use Doctrine\DBAL\Connection;
+use Keboola\TableBackendUtils\Auth\Grant\Synapse\Permission;
 use Keboola\TableBackendUtils\Column\ColumnCollection;
 use Keboola\TableBackendUtils\Column\SynapseColumn;
 use Keboola\TableBackendUtils\Escaping\SynapseQuote;
@@ -394,5 +395,50 @@ EOT
         }
 
         return [$result[0]];
+    }
+
+    /**
+     * @param array<Permission::GRANT_*> $showOnlyGrants
+     * @param array<Permission::GRANT_*> $showOnlyForGrantedObjectType
+     * @return array<int, array{'name': string, 'grant':string}>
+     */
+    public function whoHasGrantOnTable(
+        array $showOnlyGrants = [],
+        array $showOnlyForGrantedObjectType = []
+    ): array {
+        $limitWhere = '';
+        if (count($showOnlyGrants) !== 0) {
+            $grantsEscaped = [];
+            foreach ($showOnlyGrants as $grant) {
+                $grantsEscaped[] = sprintf('N\'%s\'', $grant);
+            }
+            $limitWhere .= sprintf(' AND pe.permission_name IN (%s)', implode(',', $grantsEscaped));
+        }
+        if (count($showOnlyForGrantedObjectType) !== 0) {
+            $objectsEscaped = [];
+            foreach ($showOnlyForGrantedObjectType as $object) {
+                $objectsEscaped[] = sprintf('N\'%s\'', $object);
+            }
+            $limitWhere .= sprintf(' AND pr.type_desc IN (%s)', implode(',', $objectsEscaped));
+        }
+
+        $sql = sprintf(
+            <<<SQL
+SELECT pr.name AS [NAME], pe.permission_name AS [GRANT]
+FROM sys.database_principals AS pr  
+JOIN sys.database_permissions AS pe 
+    ON pe.grantee_principal_id = pr.principal_id
+WHERE pe.major_id = %s
+%s
+;
+SQL
+            ,
+            $this->getObjectId(),
+            $limitWhere
+        );
+
+        /** @var array<int, array{'name': string, 'grant':string}> $result */
+        $result = $this->connection->fetchAllAssociative($sql);
+        return $result;
     }
 }
