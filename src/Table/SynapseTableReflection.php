@@ -399,7 +399,7 @@ EOT
 
     /**
      * @param array<Permission::GRANT_*> $showOnlyGrants
-     * @param array<Permission::GRANT_*> $showOnlyForGrantedObjectType
+     * @param array<'SQL_USER'|'DATABASE_ROLE'> $showOnlyForGrantedObjectType
      * @return array<int, array{'name': string, 'grant':string}>
      */
     public function whoHasGrantOnTable(
@@ -424,7 +424,7 @@ EOT
 
         $sql = sprintf(
             <<<SQL
-SELECT pr.name AS [NAME], pe.permission_name AS [GRANT]
+SELECT pr.name AS [name], pe.permission_name AS [grant]
 FROM sys.database_principals AS pr  
 JOIN sys.database_permissions AS pe 
     ON pe.grantee_principal_id = pr.principal_id
