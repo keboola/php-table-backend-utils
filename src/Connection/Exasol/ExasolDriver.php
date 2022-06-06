@@ -26,7 +26,7 @@ class ExasolDriver implements Driver
         assert(array_key_exists('host', $params));
         assert(array_key_exists('user', $params));
         assert(array_key_exists('password', $params));
-        $dsn = 'odbc:Driver=exasol;EXAHOST=' . $params['host'];
+        $dsn = 'odbc:Driver=exasol;ENCODING=UTF-8;EXAHOST=' . $params['host'];
 
         if ($params['skipCertCheck']) {
             $dsn .= ';FINGERPRINT=NoCertCheck;';
