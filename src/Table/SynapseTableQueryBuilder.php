@@ -4,9 +4,6 @@ declare(strict_types=1);
 
 namespace Keboola\TableBackendUtils\Table;
 
-use Doctrine\DBAL\Connection;
-use Doctrine\DBAL\Platforms\AbstractPlatform;
-use Doctrine\DBAL\Platforms\SQLServer2012Platform;
 use Keboola\TableBackendUtils\Column\ColumnCollection;
 use Keboola\TableBackendUtils\Column\ColumnInterface;
 use Keboola\TableBackendUtils\Escaping\SynapseQuote;
@@ -23,6 +20,8 @@ class SynapseTableQueryBuilder implements TableQueryBuilderInterface
         ColumnCollection $columns
     ): string {
         $this->assertTemporaryTable($tableName);
+        $schemaName = CaseConverter::stringToUpper($schemaName);
+        $tableName = CaseConverter::stringToUpper($tableName);
 
         $columnsSql = [];
         foreach ($columns as $column) {
@@ -64,6 +63,8 @@ class SynapseTableQueryBuilder implements TableQueryBuilderInterface
         ColumnCollection $columns,
         array $primaryKeys = []
     ): string {
+        $schemaName = CaseConverter::stringToUpper($schemaName);
+        $tableName = CaseConverter::stringToUpper($tableName);
         $primaryKeys = CaseConverter::arrayToUpper($primaryKeys);
         $columnsSql = [];
         foreach ($columns as $column) {
@@ -174,6 +175,8 @@ class SynapseTableQueryBuilder implements TableQueryBuilderInterface
         string $schemaName,
         string $tableName
     ): string {
+        $schemaName = CaseConverter::stringToUpper($schemaName);
+        $tableName = CaseConverter::stringToUpper($tableName);
         return sprintf(
             'DROP TABLE %s.%s',
             SynapseQuote::quoteSingleIdentifier($schemaName),
@@ -186,6 +189,9 @@ class SynapseTableQueryBuilder implements TableQueryBuilderInterface
         string $sourceTableName,
         string $newTableName
     ): string {
+        $schemaName = CaseConverter::stringToUpper($schemaName);
+        $sourceTableName = CaseConverter::stringToUpper($sourceTableName);
+        $newTableName = CaseConverter::stringToUpper($newTableName);
         return sprintf(
             'RENAME OBJECT %s.%s TO %s',
             SynapseQuote::quoteSingleIdentifier($schemaName),
@@ -198,6 +204,8 @@ class SynapseTableQueryBuilder implements TableQueryBuilderInterface
         string $schemaName,
         string $tableName
     ): string {
+        $schemaName = CaseConverter::stringToUpper($schemaName);
+        $tableName = CaseConverter::stringToUpper($tableName);
         return sprintf(
             'TRUNCATE TABLE %s.%s',
             SynapseQuote::quoteSingleIdentifier($schemaName),
