@@ -49,7 +49,7 @@ class SynapseTableQueryBuilderTest extends SynapseBaseCase
 
         $this->assertEquals(
         // phpcs:ignore
-            'CREATE TABLE [utils-test_qb-schema].[#utils-test_test] ([COL1] NVARCHAR(4000) NOT NULL DEFAULT \'\', [COL2] NVARCHAR(4000) NOT NULL DEFAULT \'\') WITH (HEAP, LOCATION = USER_DB)',
+            'CREATE TABLE [UTILS-TEST_QB-SCHEMA].[#UTILS-TEST_TEST] ([COL1] NVARCHAR(4000) NOT NULL DEFAULT \'\', [COL2] NVARCHAR(4000) NOT NULL DEFAULT \'\') WITH (HEAP, LOCATION = USER_DB)',
             $sql
         );
         $this->connection->executeStatement($sql);
@@ -75,7 +75,7 @@ class SynapseTableQueryBuilderTest extends SynapseBaseCase
         $sql = $qb->getCreateTableCommand(self::TEST_SCHEMA, self::TEST_TABLE, new ColumnCollection($cols));
         $this->assertEquals(
         // phpcs:ignore
-            'CREATE TABLE [utils-test_qb-schema].[utils-test_test] ([COL1] NVARCHAR(4000) NOT NULL DEFAULT \'\', [COL2] NVARCHAR(4000) NOT NULL DEFAULT \'\')',
+            'CREATE TABLE [UTILS-TEST_QB-SCHEMA].[UTILS-TEST_TEST] ([COL1] NVARCHAR(4000) NOT NULL DEFAULT \'\', [COL2] NVARCHAR(4000) NOT NULL DEFAULT \'\')',
             $sql
         );
         $this->connection->executeStatement($sql);
@@ -106,7 +106,7 @@ class SynapseTableQueryBuilderTest extends SynapseBaseCase
         $sql = $qb->getCreateTableCommand(self::TEST_SCHEMA, self::TEST_TABLE, new ColumnCollection($cols));
         $this->assertEquals(
         // phpcs:ignore
-            'CREATE TABLE [utils-test_qb-schema].[utils-test_test] ([COL1] NVARCHAR(4000) NOT NULL DEFAULT \'\', [COL2] NVARCHAR(4000) NOT NULL DEFAULT \'\', [_TIMESTAMP] DATETIME2)',
+            'CREATE TABLE [UTILS-TEST_QB-SCHEMA].[UTILS-TEST_TEST] ([COL1] NVARCHAR(4000) NOT NULL DEFAULT \'\', [COL2] NVARCHAR(4000) NOT NULL DEFAULT \'\', [_TIMESTAMP] DATETIME2)',
             $sql
         );
         $this->connection->executeStatement($sql);
@@ -133,7 +133,7 @@ class SynapseTableQueryBuilderTest extends SynapseBaseCase
         );
         $this->assertEquals(
         // phpcs:ignore
-            'CREATE TABLE [utils-test_qb-schema].[utils-test_test] ([PK1] INT, [COL1] NVARCHAR(4000) NOT NULL DEFAULT \'\', [COL2] NVARCHAR(4000) NOT NULL DEFAULT \'\', [_TIMESTAMP] DATETIME2, PRIMARY KEY NONCLUSTERED([PK1],[COL1]) NOT ENFORCED)',
+            'CREATE TABLE [UTILS-TEST_QB-SCHEMA].[UTILS-TEST_TEST] ([PK1] INT, [COL1] NVARCHAR(4000) NOT NULL DEFAULT \'\', [COL2] NVARCHAR(4000) NOT NULL DEFAULT \'\', [_TIMESTAMP] DATETIME2, PRIMARY KEY NONCLUSTERED([PK1],[COL1]) NOT ENFORCED)',
             $sql
         );
         $this->connection->executeStatement($sql);
@@ -330,7 +330,7 @@ EOT
         $sql = $qb->getDropTableCommand(self::TEST_SCHEMA, self::TEST_TABLE);
 
         $this->assertEquals(
-            'DROP TABLE [utils-test_qb-schema].[utils-test_test]',
+            'DROP TABLE [UTILS-TEST_QB-SCHEMA].[UTILS-TEST_TEST]',
             $sql
         );
 
@@ -372,7 +372,7 @@ EOT
         $sql = $qb->getRenameTableCommand(self::TEST_SCHEMA, self::TEST_TABLE, $renameTo);
 
         $this->assertEquals(
-            'RENAME OBJECT [utils-test_qb-schema].[utils-test_test] TO [newTable]',
+            'RENAME OBJECT [UTILS-TEST_QB-SCHEMA].[UTILS-TEST_TEST] TO [NEWTABLE]',
             $sql
         );
 
@@ -428,7 +428,7 @@ EOT
         $qb = new SynapseTableQueryBuilder();
         $sql = $qb->getTruncateTableCommand(self::TEST_SCHEMA, self::TEST_STAGING_TABLE);
         $this->assertEquals(
-            'TRUNCATE TABLE [utils-test_qb-schema].[#stagingTable]',
+            'TRUNCATE TABLE [UTILS-TEST_QB-SCHEMA].[#STAGINGTABLE]',
             $sql
         );
         $this->connection->executeStatement($sql);
@@ -469,7 +469,7 @@ EOT
         $qb = new SynapseTableQueryBuilder();
         $sql = $qb->getTruncateTableCommand(self::TEST_SCHEMA, self::TEST_TABLE);
         $this->assertEquals(
-            'TRUNCATE TABLE [utils-test_qb-schema].[utils-test_test]',
+            'TRUNCATE TABLE [UTILS-TEST_QB-SCHEMA].[UTILS-TEST_TEST]',
             $sql
         );
         $this->connection->executeStatement($sql);
