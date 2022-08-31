@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Keboola\TableBackendUtils\Table\Synapse;
 
+use Keboola\TableBackendUtils\Utils\CaseConverter;
+
 final class TableIndexDefinition
 {
     public const TABLE_INDEX_TYPE_CLUSTERED_COLUMNSTORE_INDEX = 'CLUSTERED COLUMNSTORE INDEX';
@@ -34,7 +36,7 @@ final class TableIndexDefinition
         Assert::assertValidClusteredIndex($indexType, $indexedColumnsNames);
 
         $this->indexType = $indexType;
-        $this->indexedColumnsNames = $indexedColumnsNames;
+        $this->indexedColumnsNames = CaseConverter::arrayToUpper($indexedColumnsNames);
     }
 
     /**

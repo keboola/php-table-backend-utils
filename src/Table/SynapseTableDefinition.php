@@ -8,6 +8,7 @@ use Keboola\TableBackendUtils\Column\ColumnCollection;
 use Keboola\TableBackendUtils\Column\ColumnInterface;
 use Keboola\TableBackendUtils\Table\Synapse\TableDistributionDefinition;
 use Keboola\TableBackendUtils\Table\Synapse\TableIndexDefinition;
+use Keboola\TableBackendUtils\Utils\CaseConverter;
 
 final class SynapseTableDefinition implements TableDefinitionInterface
 {
@@ -38,10 +39,10 @@ final class SynapseTableDefinition implements TableDefinitionInterface
         TableDistributionDefinition $tableDistribution,
         TableIndexDefinition $tableIndex
     ) {
-        $this->schemaName = $schemaName;
-        $this->tableName = $tableName;
+        $this->schemaName = CaseConverter::stringToUpper($schemaName);
+        $this->tableName = CaseConverter::stringToUpper($tableName);
         $this->columns = $columns;
-        $this->primaryKeysNames = $primaryKeysNames;
+        $this->primaryKeysNames = CaseConverter::arrayToUpper($primaryKeysNames);
         $this->tableDistribution = $tableDistribution;
         $this->isTemporary = $isTemporary;
         $this->tableIndex = $tableIndex;

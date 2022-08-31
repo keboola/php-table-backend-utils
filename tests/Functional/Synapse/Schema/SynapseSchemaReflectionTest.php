@@ -65,8 +65,8 @@ class SynapseSchemaReflectionTest extends SynapseBaseCase
         $tables = $ref->getTablesNames();
         $this->assertCount(2, $tables);
         $this->assertEqualsCanonicalizing([
-            'table1',
-            'table2',
+            'TABLE1',
+            'TABLE2',
         ], $tables);
     }
 
@@ -110,8 +110,8 @@ class SynapseSchemaReflectionTest extends SynapseBaseCase
         $tables = $ref->getViewsNames();
         $this->assertCount(2, $tables);
         $this->assertEqualsCanonicalizing([
-            'view1',
-            'view2',
+            'VIEW1',
+            'VIEW2',
         ], $tables);
     }
 }

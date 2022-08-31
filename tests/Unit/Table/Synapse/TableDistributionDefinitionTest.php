@@ -30,7 +30,7 @@ class TableDistributionDefinitionTest extends TestCase
     public function testValidHash(): void
     {
         $definition = new TableDistributionDefinition('HASH', ['id']);
-        self::assertSame(['id'], $definition->getDistributionColumnsNames());
+        self::assertSame(['ID'], $definition->getDistributionColumnsNames());
         self::assertSame('HASH', $definition->getDistributionName());
         self::assertTrue($definition->isHashDistribution());
     }

@@ -42,10 +42,10 @@ class SynapseTableReflectionTest extends SynapseBaseCase
         $ref = new SynapseTableReflection($this->connection, self::TEST_SCHEMA, self::TABLE_GENERIC);
 
         $this->assertSame([
-            'int_def',
-            'var_def',
-            'num_def',
-            '_time',
+            'INT_DEF',
+            'VAR_DEF',
+            'NUM_DEF',
+            '_TIME',
         ], $ref->getColumnsNames());
     }
 
@@ -108,7 +108,7 @@ class SynapseTableReflectionTest extends SynapseBaseCase
             SynapseQuote::quoteSingleIdentifier(self::TEST_SCHEMA),
             SynapseQuote::quoteSingleIdentifier(self::TABLE_GENERIC)
         ));
-        $this->assertSame(['_time', 'int_def'], $ref->getPrimaryKeysNames());
+        $this->assertSame(['_TIME', 'INT_DEF'], $ref->getPrimaryKeysNames());
     }
 
     public function testGetRowsCount(): void
@@ -463,10 +463,10 @@ class SynapseTableReflectionTest extends SynapseBaseCase
         $this->assertCount(2, $definitions);
 
         $col1 = $definitions[0];
-        $this->assertSame('col', $col1->getColumnName());
+        $this->assertSame('COL', $col1->getColumnName());
 
         $col2 = $definitions[1];
-        $this->assertSame('_time', $col2->getColumnName());
+        $this->assertSame('_TIME', $col2->getColumnName());
     }
 
     /**
@@ -600,8 +600,8 @@ class SynapseTableReflectionTest extends SynapseBaseCase
         $this->assertCount(1, $dependentViews);
 
         $this->assertSame([
-            'schema_name' => self::TEST_SCHEMA,
-            'name' => self::VIEW_GENERIC,
+            'schema_name' => 'UTILS-TEST_REF-TABLE-SCHEMA',
+            'name' => 'UTILS-TEST_REF-VIEW',
         ], $dependentViews[0]);
     }
 
@@ -687,7 +687,7 @@ class SynapseTableReflectionTest extends SynapseBaseCase
         ];
         yield 'HASH' => [
             'DISTRIBUTION = HASH (int_def)',
-            ['int_def'],
+            ['INT_DEF'],
         ];
         yield 'REPLICATE' => [
             'DISTRIBUTION = REPLICATE',
@@ -741,12 +741,12 @@ class SynapseTableReflectionTest extends SynapseBaseCase
         yield 'CLUSTERED INDEX' => [
             'CLUSTERED INDEX (int_def)',
             'CLUSTERED INDEX',
-            ['int_def'],
+            ['INT_DEF'],
         ];
         yield 'CLUSTERED INDEX MULTIPLE' => [
             'CLUSTERED INDEX (int_def, int_def2)',
             'CLUSTERED INDEX',
-            ['int_def', 'int_def2'],
+            ['INT_DEF', 'INT_DEF2'],
         ];
         yield 'Default' => [
             null,

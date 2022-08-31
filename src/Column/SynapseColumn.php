@@ -6,6 +6,7 @@ namespace Keboola\TableBackendUtils\Column;
 
 use Keboola\Datatype\Definition\DefinitionInterface;
 use Keboola\Datatype\Definition\Synapse;
+use Keboola\TableBackendUtils\Utils\CaseConverter;
 
 final class SynapseColumn implements ColumnInterface
 {
@@ -15,7 +16,7 @@ final class SynapseColumn implements ColumnInterface
 
     public function __construct(string $columnName, Synapse $columnDefinition)
     {
-        $this->columnName = $columnName;
+        $this->columnName = CaseConverter::stringToUpper($columnName);
         $this->columnDefinition = $columnDefinition;
     }
 

@@ -49,7 +49,7 @@ class SynapseTableQueryBuilderTest extends SynapseBaseCase
 
         $this->assertEquals(
         // phpcs:ignore
-            'CREATE TABLE [utils-test_qb-schema].[#utils-test_test] ([col1] NVARCHAR(4000) NOT NULL DEFAULT \'\', [col2] NVARCHAR(4000) NOT NULL DEFAULT \'\') WITH (HEAP, LOCATION = USER_DB)',
+            'CREATE TABLE [utils-test_qb-schema].[#utils-test_test] ([COL1] NVARCHAR(4000) NOT NULL DEFAULT \'\', [COL2] NVARCHAR(4000) NOT NULL DEFAULT \'\') WITH (HEAP, LOCATION = USER_DB)',
             $sql
         );
         $this->connection->executeStatement($sql);
@@ -75,13 +75,13 @@ class SynapseTableQueryBuilderTest extends SynapseBaseCase
         $sql = $qb->getCreateTableCommand(self::TEST_SCHEMA, self::TEST_TABLE, new ColumnCollection($cols));
         $this->assertEquals(
         // phpcs:ignore
-            'CREATE TABLE [utils-test_qb-schema].[utils-test_test] ([col1] NVARCHAR(4000) NOT NULL DEFAULT \'\', [col2] NVARCHAR(4000) NOT NULL DEFAULT \'\')',
+            'CREATE TABLE [utils-test_qb-schema].[utils-test_test] ([COL1] NVARCHAR(4000) NOT NULL DEFAULT \'\', [COL2] NVARCHAR(4000) NOT NULL DEFAULT \'\')',
             $sql
         );
         $this->connection->executeStatement($sql);
         $ref = $this->getSynapseTableReflection();
         $this->assertNotNull($ref->getObjectId());
-        $this->assertEqualsCanonicalizing(['col1', 'col2'], $ref->getColumnsNames());
+        $this->assertEqualsCanonicalizing(['COL1', 'COL2'], $ref->getColumnsNames());
 
         $this->expectException(Exception::class);
         $this->connection->executeStatement($sql);
@@ -106,13 +106,13 @@ class SynapseTableQueryBuilderTest extends SynapseBaseCase
         $sql = $qb->getCreateTableCommand(self::TEST_SCHEMA, self::TEST_TABLE, new ColumnCollection($cols));
         $this->assertEquals(
         // phpcs:ignore
-            'CREATE TABLE [utils-test_qb-schema].[utils-test_test] ([col1] NVARCHAR(4000) NOT NULL DEFAULT \'\', [col2] NVARCHAR(4000) NOT NULL DEFAULT \'\', [_timestamp] DATETIME2)',
+            'CREATE TABLE [utils-test_qb-schema].[utils-test_test] ([COL1] NVARCHAR(4000) NOT NULL DEFAULT \'\', [COL2] NVARCHAR(4000) NOT NULL DEFAULT \'\', [_TIMESTAMP] DATETIME2)',
             $sql
         );
         $this->connection->executeStatement($sql);
         $ref = $this->getSynapseTableReflection();
         $this->assertNotNull($ref->getObjectId());
-        $this->assertEqualsCanonicalizing(['col1', 'col2', '_timestamp'], $ref->getColumnsNames());
+        $this->assertEqualsCanonicalizing(['COL1', 'COL2', '_TIMESTAMP'], $ref->getColumnsNames());
     }
 
     public function testGetCreateTableCommandWithTimestampAndPrimaryKeys(): void
@@ -133,13 +133,13 @@ class SynapseTableQueryBuilderTest extends SynapseBaseCase
         );
         $this->assertEquals(
         // phpcs:ignore
-            'CREATE TABLE [utils-test_qb-schema].[utils-test_test] ([pk1] INT, [col1] NVARCHAR(4000) NOT NULL DEFAULT \'\', [col2] NVARCHAR(4000) NOT NULL DEFAULT \'\', [_timestamp] DATETIME2, PRIMARY KEY NONCLUSTERED([pk1],[col1]) NOT ENFORCED)',
+            'CREATE TABLE [utils-test_qb-schema].[utils-test_test] ([PK1] INT, [COL1] NVARCHAR(4000) NOT NULL DEFAULT \'\', [COL2] NVARCHAR(4000) NOT NULL DEFAULT \'\', [_TIMESTAMP] DATETIME2, PRIMARY KEY NONCLUSTERED([PK1],[COL1]) NOT ENFORCED)',
             $sql
         );
         $this->connection->executeStatement($sql);
         $ref = $this->getSynapseTableReflection();
         $this->assertNotNull($ref->getObjectId());
-        $this->assertEqualsCanonicalizing(['pk1', 'col1', 'col2', '_timestamp'], $ref->getColumnsNames());
+        $this->assertEqualsCanonicalizing(['PK1', 'COL1', 'COL2', '_TIMESTAMP'], $ref->getColumnsNames());
     }
 
     /**
@@ -341,7 +341,7 @@ EOT
 
         $ref = $this->getSynapseTableReflection();
         $this->expectException(TableNotExistsReflectionException::class);
-        $this->expectExceptionMessage('Table "utils-test_qb-schema.utils-test_test" does not exist.');
+        $this->expectExceptionMessage('Table "UTILS-TEST_QB-SCHEMA.UTILS-TEST_TEST" does not exist.');
         $ref->getObjectId();
     }
 
@@ -383,7 +383,7 @@ EOT
 
         $ref = $this->getSynapseTableReflection();
         $this->expectException(TableNotExistsReflectionException::class);
-        $this->expectExceptionMessage('Table "utils-test_qb-schema.utils-test_test" does not exist.');
+        $this->expectExceptionMessage('Table "UTILS-TEST_QB-SCHEMA.UTILS-TEST_TEST" does not exist.');
         $ref->getObjectId();
     }
 

@@ -31,10 +31,10 @@ class SynapseTableDefinitionTest extends TestCase
             new TableDistributionDefinition(TableDistributionDefinition::TABLE_DISTRIBUTION_ROUND_ROBIN),
             new TableIndexDefinition(TableIndexDefinition::TABLE_INDEX_TYPE_CLUSTERED_COLUMNSTORE_INDEX)
         );
-        self::assertSame('schema', $definition->getSchemaName());
-        self::assertSame('tableName', $definition->getTableName());
-        self::assertSame(['col1'], $definition->getColumnsNames());
-        self::assertSame(['pk1'], $definition->getPrimaryKeysNames());
+        self::assertSame('SCHEMA', $definition->getSchemaName());
+        self::assertSame('TABLENAME', $definition->getTableName());
+        self::assertSame(['COL1'], $definition->getColumnsNames());
+        self::assertSame(['PK1'], $definition->getPrimaryKeysNames());
         self::assertSame('ROUND_ROBIN', $definition->getTableDistribution()->getDistributionName());
         self::assertSame('CLUSTERED COLUMNSTORE INDEX', $definition->getTableIndex()->getIndexType());
         self::assertSame($columns, $definition->getColumnsDefinitions());

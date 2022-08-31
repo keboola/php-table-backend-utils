@@ -7,6 +7,7 @@ namespace Keboola\TableBackendUtils\View;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception;
 use Keboola\TableBackendUtils\Escaping\SynapseQuote;
+use Keboola\TableBackendUtils\Utils\CaseConverter;
 
 final class SynapseViewReflection implements ViewReflectionInterface
 {
@@ -53,8 +54,8 @@ final class SynapseViewReflection implements ViewReflectionInterface
             }
 
             $dependencies[] = [
-                'schema_name' => $view['TABLE_SCHEMA'],
-                'name' => $view['TABLE_NAME'],
+                'schema_name' => CaseConverter::stringToUpper($view['TABLE_SCHEMA']),
+                'name' => CaseConverter::stringToUpper($view['TABLE_NAME']),
             ];
         }
 

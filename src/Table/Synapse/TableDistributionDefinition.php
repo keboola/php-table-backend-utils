@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Keboola\TableBackendUtils\Table\Synapse;
 
+use Keboola\TableBackendUtils\Utils\CaseConverter;
+
 final class TableDistributionDefinition
 {
     public const TABLE_DISTRIBUTION_HASH = 'HASH';
@@ -33,7 +35,7 @@ final class TableDistributionDefinition
         Assert::assertValidHashDistribution($distributionName, $distributionColumnsNames);
 
         $this->distributionName = $distributionName;
-        $this->distributionColumnsNames = $distributionColumnsNames;
+        $this->distributionColumnsNames = CaseConverter::arrayToUpper($distributionColumnsNames);
     }
 
     /**

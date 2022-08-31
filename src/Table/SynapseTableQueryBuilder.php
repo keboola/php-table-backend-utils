@@ -12,6 +12,7 @@ use Keboola\TableBackendUtils\Column\ColumnInterface;
 use Keboola\TableBackendUtils\Escaping\SynapseQuote;
 use Keboola\TableBackendUtils\QueryBuilderException;
 use Keboola\TableBackendUtils\Table\Synapse\TableIndexDefinition;
+use Keboola\TableBackendUtils\Utils\CaseConverter;
 
 class SynapseTableQueryBuilder implements TableQueryBuilderInterface
 {
@@ -63,6 +64,7 @@ class SynapseTableQueryBuilder implements TableQueryBuilderInterface
         ColumnCollection $columns,
         array $primaryKeys = []
     ): string {
+        $primaryKeys = CaseConverter::arrayToUpper($primaryKeys);
         $columnsSql = [];
         foreach ($columns as $column) {
             if ($column->getColumnName() === ColumnInterface::TIMESTAMP_COLUMN_NAME) {

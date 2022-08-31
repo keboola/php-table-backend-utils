@@ -6,6 +6,7 @@ namespace Keboola\TableBackendUtils\Schema;
 
 use Doctrine\DBAL\Connection;
 use Keboola\TableBackendUtils\Escaping\SynapseQuote;
+use Keboola\TableBackendUtils\Utils\CaseConverter;
 
 final class SynapseSchemaReflection implements SchemaReflectionInterface
 {
@@ -35,7 +36,7 @@ order by name;
 EOT
         );
 
-        return array_map(static fn($table) => $table['name'], $tables);
+        return array_map(static fn($table) => CaseConverter::stringToUpper($table['name']), $tables);
     }
 
     /**
@@ -54,6 +55,6 @@ order by name;
 EOT
         );
 
-        return array_map(static fn($table) => $table['name'], $tables);
+        return array_map(static fn($table) => CaseConverter::stringToUpper($table['name']), $tables);
     }
 }

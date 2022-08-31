@@ -24,7 +24,7 @@ class SynapseColumnTest extends TestCase
             'column_is_nullable' => 'true',
             'column_default' => '(NOW())',
         ]);
-        $this->assertEquals('myCol', $col->getColumnName());
+        $this->assertEquals('MYCOL', $col->getColumnName());
         $this->assertEquals('DATETIME NOT NULL DEFAULT NOW()', $col->getColumnDefinition()->getSQLDefinition());
         $this->assertEquals('DATETIME', $col->getColumnDefinition()->getType());
         $this->assertEquals('NOW()', $col->getColumnDefinition()->getDefault());
@@ -42,7 +42,7 @@ class SynapseColumnTest extends TestCase
             'column_is_nullable' => 'true',
             'column_default' => null,
         ]);
-        $this->assertEquals('myCol', $col->getColumnName());
+        $this->assertEquals('MYCOL', $col->getColumnName());
         $this->assertEquals('NVARCHAR(2000) NOT NULL', $col->getColumnDefinition()->getSQLDefinition());
         $this->assertEquals('NVARCHAR', $col->getColumnDefinition()->getType());
         $this->assertEquals('', $col->getColumnDefinition()->getDefault());
@@ -60,7 +60,7 @@ class SynapseColumnTest extends TestCase
             'column_is_nullable' => 'true',
             'column_default' => '((1))',
         ]);
-        $this->assertEquals('myCol', $col->getColumnName());
+        $this->assertEquals('MYCOL', $col->getColumnName());
         $this->assertEquals('DECIMAL(20,10) NOT NULL DEFAULT 1', $col->getColumnDefinition()->getSQLDefinition());
         $this->assertEquals('DECIMAL', $col->getColumnDefinition()->getType());
         $this->assertEquals('1', $col->getColumnDefinition()->getDefault());
@@ -70,7 +70,7 @@ class SynapseColumnTest extends TestCase
     public function testCreateGenericColumn(): void
     {
         $col = SynapseColumn::createGenericColumn('myCol');
-        $this->assertEquals('myCol', $col->getColumnName());
+        $this->assertEquals('MYCOL', $col->getColumnName());
         $this->assertEquals('NVARCHAR(4000) NOT NULL DEFAULT \'\'', $col->getColumnDefinition()->getSQLDefinition());
         $this->assertEquals('NVARCHAR', $col->getColumnDefinition()->getType());
         $this->assertEquals('\'\'', $col->getColumnDefinition()->getDefault());
@@ -80,7 +80,7 @@ class SynapseColumnTest extends TestCase
     public function testCreateTimestampColumn(): void
     {
         $col = SynapseColumn::createTimestampColumn();
-        $this->assertEquals('_timestamp', $col->getColumnName());
+        $this->assertEquals('_TIMESTAMP', $col->getColumnName());
         $this->assertEquals('DATETIME2', $col->getColumnDefinition()->getSQLDefinition());
         $this->assertEquals('DATETIME2', $col->getColumnDefinition()->getType());
         $this->assertEquals(null, $col->getColumnDefinition()->getDefault());
@@ -90,7 +90,7 @@ class SynapseColumnTest extends TestCase
     public function testCreateTimestampColumnNonDefaultName(): void
     {
         $col = SynapseColumn::createTimestampColumn('_kbc_timestamp');
-        $this->assertEquals('_kbc_timestamp', $col->getColumnName());
+        $this->assertEquals('_KBC_TIMESTAMP', $col->getColumnName());
         $this->assertEquals('DATETIME2', $col->getColumnDefinition()->getSQLDefinition());
         $this->assertEquals('DATETIME2', $col->getColumnDefinition()->getType());
         $this->assertEquals(null, $col->getColumnDefinition()->getDefault());

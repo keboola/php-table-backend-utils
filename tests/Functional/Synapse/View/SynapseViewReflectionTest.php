@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Keboola\TableBackendUtils\Functional\Synapse\View;
 
 use Keboola\TableBackendUtils\Table\SynapseTableReflection;
+use Keboola\TableBackendUtils\Utils\CaseConverter;
 use Keboola\TableBackendUtils\View\InvalidViewDefinitionException;
 use Keboola\TableBackendUtils\View\SynapseViewReflection;
 use Tests\Keboola\TableBackendUtils\Functional\Synapse\SynapseBaseCase;
@@ -48,8 +49,8 @@ class SynapseViewReflectionTest extends SynapseBaseCase
         $this->assertCount(1, $dependentViews);
 
         $this->assertSame([
-            'schema_name' => self::TEST_SCHEMA,
-            'name' => $secondViewName,
+            'schema_name' => 'UTILS-TEST_REF-TABLE-SCHEMA',
+            'name' => 'UTILS-TEST_REF-VIEW-2',
         ], $dependentViews[0]);
     }
 

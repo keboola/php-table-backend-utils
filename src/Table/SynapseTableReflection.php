@@ -12,6 +12,7 @@ use Keboola\TableBackendUtils\ReflectionException;
 use Keboola\TableBackendUtils\Table\Synapse\TableDistributionDefinition;
 use Keboola\TableBackendUtils\Table\Synapse\TableIndexDefinition;
 use Keboola\TableBackendUtils\TableNotExistsReflectionException;
+use Keboola\TableBackendUtils\Utils\CaseConverter;
 use LogicException;
 use function Keboola\Utils\returnBytes;
 
@@ -31,8 +32,8 @@ final class SynapseTableReflection implements TableReflectionInterface
     {
         // temporary tables starts with #
         $this->isTemporary = strpos($tableName, '#') === 0;
-        $this->tableName = $tableName;
-        $this->schemaName = $schemaName;
+        $this->tableName = CaseConverter::stringToUpper($tableName);
+        $this->schemaName = CaseConverter::stringToUpper($schemaName);
         $this->connection = $connection;
     }
 
@@ -52,7 +53,7 @@ final class SynapseTableReflection implements TableReflectionInterface
             SynapseQuote::quote($tableId)
         ));
 
-        return array_map(static fn($column) => $column['name'], $columns);
+        return array_map(static fn($column) => CaseConverter::stringToUpper($column['name']), $columns);
     }
 
     /**
@@ -175,7 +176,7 @@ SELECT COL_NAME(ic.OBJECT_ID,ic.column_id) AS column_name
 EOT
         );
 
-        return array_map(static fn($item) => $item['column_name'], $result);
+        return array_map(static fn($item) => CaseConverter::stringToUpper($item['column_name']), $result);
     }
 
     public function getTableStats(): TableStatsInterface
@@ -241,14 +242,14 @@ EOT
         $dependencies = [];
         foreach ($views as $view) {
             if ($view['VIEW_DEFINITION'] === null
-                || strpos($view['VIEW_DEFINITION'], $objectNameWithSchema) === false
+                || strpos(CaseConverter::stringToUpper($view['VIEW_DEFINITION']), $objectNameWithSchema) === false
             ) {
                 continue;
             }
 
             $dependencies[] = [
-                'schema_name' => $view['TABLE_SCHEMA'],
-                'name' => $view['TABLE_NAME'],
+                'schema_name' => CaseConverter::stringToUpper($view['TABLE_SCHEMA']),
+                'name' => CaseConverter::stringToUpper($view['TABLE_NAME']),
             ];
         }
 
@@ -290,7 +291,7 @@ WHERE dp.distribution_ordinal = 1 AND dp.OBJECT_ID = '$tableId' AND c.object_id 
 EOT
         );
 
-        return array_map(static fn($item) => $item['name'], $result);
+        return array_map(static fn($item) => CaseConverter::stringToUpper($item['name']), $result);
     }
 
     /**
@@ -389,6 +390,6 @@ EOT
             return [];
         }
 
-        return $result;
+        return CaseConverter::arrayToUpper($result);
     }
 }
