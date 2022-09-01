@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Keboola\TableBackendUtils\Table;
 
+use Keboola\Datatype\Definition\Synapse;
 use Keboola\TableBackendUtils\Column\ColumnCollection;
 use Keboola\TableBackendUtils\Column\ColumnInterface;
 use Keboola\TableBackendUtils\Escaping\SynapseQuote;
@@ -67,9 +68,10 @@ class SynapseTableQueryBuilder implements TableQueryBuilderInterface
         $tableName = CaseConverter::stringToUpper($tableName);
         $primaryKeys = CaseConverter::arrayToUpper($primaryKeys);
         $columnsSql = [];
+        $timestampColumnUpper = CaseConverter::stringToUpper(ColumnInterface::TIMESTAMP_COLUMN_NAME);
         foreach ($columns as $column) {
-            if ($column->getColumnName() === ColumnInterface::TIMESTAMP_COLUMN_NAME) {
-                $columnsSql[] = sprintf('[%s] DATETIME2', ColumnInterface::TIMESTAMP_COLUMN_NAME);
+            if ($column->getColumnName() === $timestampColumnUpper) {
+                $columnsSql[] = sprintf('[%s] %s', $timestampColumnUpper, Synapse::TYPE_DATETIME2);
                 continue;
             }
             $columnsSql[] = sprintf(

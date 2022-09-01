@@ -115,6 +115,28 @@ class SynapseTableQueryBuilderTest extends SynapseBaseCase
         $this->assertEqualsCanonicalizing(['COL1', 'COL2', '_TIMESTAMP'], $ref->getColumnsNames());
     }
 
+    public function testGetCreateTableCommandWithTimestampOverwrite(): void
+    {
+        $this->createTestSchema();
+        $cols = [
+            SynapseColumn::createGenericColumn('col1'),
+            SynapseColumn::createGenericColumn('col2'),
+            // this timestamp type varchar is overwritten to datetime2
+            new SynapseColumn('_timestamp', new Synapse(Synapse::TYPE_NVARCHAR)),
+        ];
+        $qb = new SynapseTableQueryBuilder();
+        $sql = $qb->getCreateTableCommand(self::TEST_SCHEMA, self::TEST_TABLE, new ColumnCollection($cols));
+        $this->assertEquals(
+        // phpcs:ignore
+            'CREATE TABLE [UTILS-TEST_QB-SCHEMA].[UTILS-TEST_TEST] ([COL1] NVARCHAR(4000) NOT NULL DEFAULT \'\', [COL2] NVARCHAR(4000) NOT NULL DEFAULT \'\', [_TIMESTAMP] DATETIME2)',
+            $sql
+        );
+        $this->connection->executeStatement($sql);
+        $ref = $this->getSynapseTableReflection();
+        $this->assertNotNull($ref->getObjectId());
+        $this->assertEqualsCanonicalizing(['COL1', 'COL2', '_TIMESTAMP'], $ref->getColumnsNames());
+    }
+
     public function testGetCreateTableCommandWithTimestampAndPrimaryKeys(): void
     {
         $this->createTestSchema();
