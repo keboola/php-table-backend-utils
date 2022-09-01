@@ -33,7 +33,7 @@ class SynapseSchemaQueryBuilderTest extends SynapseBaseCase
 
         $schemas = $this->getSchemaFromDatabase();
         $this->assertCount(1, $schemas);
-        $this->assertSame([self::TEST_SCHEMA], $schemas);
+        $this->assertSame(['UTILS-TEST_QB-SCHEMA-SCHEMA'], $schemas);
     }
 
     /**
