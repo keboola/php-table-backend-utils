@@ -43,7 +43,8 @@ class SnowflakeDSNGenerator
      *     'networkTimeout'?:int,
      *     'queryTimeout'?: int,
      *     'clientSessionKeepAlive'?: bool,
-     *     'maxBackoffAttempts'?:int
+     *     'maxBackoffAttempts'?:int,
+     *     'queryTags'?: array<string, string>
      * } $options
      */
     public static function generateDSN(array $options): string
@@ -68,6 +69,7 @@ class SnowflakeDSNGenerator
             'schema',
             'warehouse',
             'runId',
+            'queryTags',
             'clientSessionKeepAlive',
             'driverClass',
             'driverOptions',
