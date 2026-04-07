@@ -1,11 +1,15 @@
 services:
-  production: &prod
+  dev: &dev
+    platform: linux/amd64
     build:
-      context: .
-      args:
-        - AWS_ACCESS_KEY_ID
-        - AWS_SECRET_ACCESS_KEY
-    image: table-utils
+      context: ../..
+      dockerfile: Dockerfile
+      target: package-ci
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    working_dir: /code
+    volumes:
+      - ./:/code
     environment:
       - TEST_PREFIX
       - ABS_ACCOUNT_NAME
@@ -19,17 +23,14 @@ services:
       - SNOWFLAKE_DATABASE
       - SNOWFLAKE_WAREHOUSE
       - BQ_KEY_FILE
-  dev: &dev
-    <<: *prod
-    extra_hosts:
-      - host.docker.internal:host-gateway
-    volumes:
-      - ./:/code
+
   ci:
     platform: linux/amd64
     image: ci-table-backend-utils
     build:
-      context: .
+      context: ../..
+      dockerfile: Dockerfile
+      target: package-ci
     working_dir: /code
     volumes:
       - .:/code
@@ -43,6 +44,10 @@ services:
       - SNOWFLAKE_DATABASE
       - SNOWFLAKE_WAREHOUSE
       - BQ_KEY_FILE
+
   dev-xdebug:
     <<: *dev
-    build: docker/xdebug
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+      target: package-ci-xdebug
