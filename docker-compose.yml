@@ -24,6 +24,10 @@ services:
       - SNOWFLAKE_WAREHOUSE
       - BQ_KEY_FILE
 
+  # Alias for standalone repo workflow compatibility
+  production:
+    <<: *dev
+
   ci:
     platform: linux/amd64
     image: ci-table-backend-utils
