@@ -27,6 +27,7 @@ services:
   # Alias for standalone repo workflow compatibility
   production:
     <<: *dev
+    image: table-utils
 
   ci:
     platform: linux/amd64
