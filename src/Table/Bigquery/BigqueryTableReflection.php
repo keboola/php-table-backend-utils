@@ -85,7 +85,7 @@ class BigqueryTableReflection implements TableReflectionInterface
     {
         $this->throwIfNotExists();
         /** @var int|string $numRows */
-        $numRows = $this->getTableInfo()['numRows'];
+        $numRows = $this->getTableInfo()['numRows'] ?? 0;
         return (int) $numRows;
     }
 
@@ -111,7 +111,7 @@ class BigqueryTableReflection implements TableReflectionInterface
     {
         $this->throwIfNotExists();
         /** @var int|string $numBytes */
-        $numBytes = $this->getTableInfo()['numBytes'];
+        $numBytes = $this->getTableInfo()['numBytes'] ?? 0;
         return new TableStats((int) $numBytes, $this->getRowsCount());
     }
 
@@ -247,6 +247,11 @@ class BigqueryTableReflection implements TableReflectionInterface
 
     public function getTableType(): TableType
     {
-        return ($this->getTableInfo()['type'] === 'EXTERNAL') ? TableType::BIGQUERY_EXTERNAL : TableType::TABLE;
+        $type = $this->getTableInfo()['type'] ?? 'TABLE';
+        return match ($type) {
+            'EXTERNAL' => TableType::BIGQUERY_EXTERNAL,
+            'VIEW', 'MATERIALIZED_VIEW' => TableType::VIEW,
+            default => TableType::TABLE,
+        };
     }
 }
