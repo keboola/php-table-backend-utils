@@ -21,6 +21,19 @@ interface TableQueryBuilderInterface
 
     public function getRenameTableCommand(string $schemaName, string $sourceTableName, string $newTableName): string;
 
+    /**
+     * Atomically swap the contents of two tables within the same schema.
+     *
+     * Backends that implement a native, atomic swap (e.g. Snowflake's
+     * `ALTER TABLE ... SWAP WITH ...`) return the corresponding SQL statement.
+     *
+     * Backends without native swap support (e.g. BigQuery) MUST throw
+     * `\LogicException` from this method. Callers targeting such backends are
+     * expected to emulate the swap via a chain of `getRenameTableCommand()`
+     * calls at the handler layer and perform compensation on failure.
+     */
+    public function getSwapTableCommand(string $schemaName, string $tableA, string $tableB): string;
+
     public function getTruncateTableCommand(string $schemaName, string $tableName): string;
 
     /**

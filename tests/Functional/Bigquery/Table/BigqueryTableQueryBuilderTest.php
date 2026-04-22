@@ -171,6 +171,71 @@ EOT
         $ref->getRowsCount();
     }
 
+    public function testGetRenameTableCommand(): void
+    {
+        $testDb = $this->getDatasetName();
+        $testTable = self::TABLE_GENERIC;
+        $newTable = 'renamed_table';
+        $this->initTable();
+
+        $refOld = new BigqueryTableReflection($this->bqClient, $testDb, $testTable);
+        $refOld->getColumnsNames();
+
+        $sql = $this->qb->getRenameTableCommand($testDb, $testTable, $newTable);
+        self::assertEquals("ALTER TABLE `$testDb`.`$testTable` RENAME TO `$newTable`", $sql);
+        $this->bqClient->runQuery($this->bqClient->query($sql));
+
+        // New table exists.
+        $refNew = new BigqueryTableReflection($this->bqClient, $testDb, $newTable);
+        self::assertSame(['id', 'first_name', 'last_name'], $refNew->getColumnsNames());
+
+        // Old name is gone.
+        $this->expectException(TableNotExistsReflectionException::class);
+        (new BigqueryTableReflection($this->bqClient, $testDb, $testTable))->getColumnsNames();
+    }
+
+    public function testSwapEmulatedViaRenameChain(): void
+    {
+        // BigQuery has no native SWAP; validate that a 3-step rename chain behaves as expected.
+        $testDb = $this->getDatasetName();
+        $tableA = self::TABLE_GENERIC;
+        $tableB = 'swap_target';
+        $tmp = '__kbc_swap_tmp_functional';
+        $this->initTable();
+
+        // create tableB with same shape
+        $this->bqClient->runQuery($this->bqClient->query(
+            sprintf(
+                'CREATE OR REPLACE TABLE `%s`.`%s` (`id` INTEGER, `first_name` STRING(100), `last_name` STRING(100));',
+                $testDb,
+                $tableB,
+            ),
+        ));
+
+        $this->insertRowToTable($testDb, $tableA, 1, 'a-only', 'x');
+        $this->insertRowToTable($testDb, $tableB, 2, 'b-one', 'y');
+        $this->insertRowToTable($testDb, $tableB, 3, 'b-two', 'z');
+
+        $refA = new BigqueryTableReflection($this->bqClient, $testDb, $tableA);
+        $refB = new BigqueryTableReflection($this->bqClient, $testDb, $tableB);
+        self::assertSame(1, $refA->getRowsCount());
+        self::assertSame(2, $refB->getRowsCount());
+
+        // Emulated swap: A -> tmp, B -> A, tmp -> B
+        $this->bqClient->runQuery($this->bqClient->query(
+            $this->qb->getRenameTableCommand($testDb, $tableA, $tmp),
+        ));
+        $this->bqClient->runQuery($this->bqClient->query(
+            $this->qb->getRenameTableCommand($testDb, $tableB, $tableA),
+        ));
+        $this->bqClient->runQuery($this->bqClient->query(
+            $this->qb->getRenameTableCommand($testDb, $tmp, $tableB),
+        ));
+
+        self::assertSame(2, $refA->getRowsCount());
+        self::assertSame(1, $refB->getRowsCount());
+    }
+
     public function testAddAndDropColumn(): void
     {
         $this->cleanDataset(self::TEST_SCHEMA);

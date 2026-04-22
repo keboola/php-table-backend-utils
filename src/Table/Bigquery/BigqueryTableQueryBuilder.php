@@ -41,7 +41,27 @@ class BigqueryTableQueryBuilder implements TableQueryBuilderInterface
 
     public function getRenameTableCommand(string $schemaName, string $sourceTableName, string $newTableName): string
     {
-        throw new LogicException('Not implemented');
+        // BigQuery's `ALTER TABLE ... RENAME TO ...` only accepts the bare new table name
+        // (not a fully-qualified identifier). The target table is implicitly created in
+        // the same dataset as the source. See:
+        // https://cloud.google.com/bigquery/docs/reference/standard-sql/data-definition-language#alter_table_rename_to_statement
+        return sprintf(
+            'ALTER TABLE %s.%s RENAME TO %s',
+            BigqueryQuote::quoteSingleIdentifier($schemaName),
+            BigqueryQuote::quoteSingleIdentifier($sourceTableName),
+            BigqueryQuote::quoteSingleIdentifier($newTableName),
+        );
+    }
+
+    public function getSwapTableCommand(string $schemaName, string $tableA, string $tableB): string
+    {
+        // BigQuery has no atomic `SWAP WITH` equivalent. Callers must emulate the swap
+        // at the handler layer via a chain of getRenameTableCommand() calls with
+        // compensation on failure.
+        throw new LogicException(
+            'BigQuery does not support atomic table swap; '
+            . 'use a chain of getRenameTableCommand() calls in the handler.',
+        );
     }
 
     public function getTruncateTableCommand(string $schemaName, string $tableName): string
