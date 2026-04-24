@@ -176,7 +176,8 @@ EOT
         $testDb = $this->getDatasetName();
         $testTable = self::TABLE_GENERIC;
         $newTable = 'renamed_table';
-        $this->initTable();
+        $this->cleanDataset($testDb);
+        $this->initTable($testDb);
 
         $refOld = new BigqueryTableReflection($this->bqClient, $testDb, $testTable);
         $refOld->getColumnsNames();
@@ -201,7 +202,8 @@ EOT
         $tableA = self::TABLE_GENERIC;
         $tableB = 'swap_target';
         $tmp = '__kbc_swap_tmp_functional';
-        $this->initTable();
+        $this->cleanDataset($testDb);
+        $this->initTable($testDb);
 
         // create tableB with same shape
         $this->bqClient->runQuery($this->bqClient->query(
@@ -232,8 +234,11 @@ EOT
             $this->qb->getRenameTableCommand($testDb, $tmp, $tableB),
         ));
 
-        self::assertSame(2, $refA->getRowsCount());
-        self::assertSame(1, $refB->getRowsCount());
+        // Reflection caches table info; recreate to observe post-swap state.
+        $refAAfter = new BigqueryTableReflection($this->bqClient, $testDb, $tableA);
+        $refBAfter = new BigqueryTableReflection($this->bqClient, $testDb, $tableB);
+        self::assertSame(2, $refAAfter->getRowsCount());
+        self::assertSame(1, $refBAfter->getRowsCount());
     }
 
     public function testAddAndDropColumn(): void
