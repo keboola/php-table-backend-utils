@@ -10,6 +10,7 @@ services:
     working_dir: /code
     volumes:
       - ./:/code
+      - ../PhpDatatypes:/code/Package/PhpDatatypes
     environment:
       - TEST_PREFIX
       - ABS_ACCOUNT_NAME
