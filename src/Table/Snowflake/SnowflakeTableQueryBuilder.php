@@ -76,6 +76,21 @@ class SnowflakeTableQueryBuilder implements TableQueryBuilderInterface
         );
     }
 
+    public function getSwapTableCommand(string $schemaName, string $tableA, string $tableB): string
+    {
+        $this->assertTableName($tableA);
+        $this->assertTableName($tableB);
+
+        $quotedDbName = SnowflakeQuote::quoteSingleIdentifier($schemaName);
+        return sprintf(
+            'ALTER TABLE %s.%s SWAP WITH %s.%s',
+            $quotedDbName,
+            SnowflakeQuote::quoteSingleIdentifier($tableA),
+            $quotedDbName,
+            SnowflakeQuote::quoteSingleIdentifier($tableB),
+        );
+    }
+
     public function getTruncateTableCommand(string $schemaName, string $tableName): string
     {
         return sprintf(

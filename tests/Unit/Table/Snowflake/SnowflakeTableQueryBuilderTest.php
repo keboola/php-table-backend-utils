@@ -83,6 +83,23 @@ class SnowflakeTableQueryBuilderTest extends TestCase
         self::assertEquals('ALTER TABLE "testDb"."testTable" RENAME TO "testDb"."newTable"', $renameCommand);
     }
 
+    public function testGetSwapTable(): void
+    {
+        $swapCommand = $this->qb->getSwapTableCommand('testDb', 'tableA', 'tableB');
+        self::assertEquals('ALTER TABLE "testDb"."tableA" SWAP WITH "testDb"."tableB"', $swapCommand);
+    }
+
+    public function testSwapTableWithInvalidTableName(): void
+    {
+        $this->expectException(QueryBuilderException::class);
+        $this->expectExceptionMessage(
+            'Invalid table name testTab.: Only alphanumeric characters, dash,'
+                . ' underscores and dollar signs are allowed.',
+        );
+        $this->qb->getSwapTableCommand('testDb', 'testTab.', 'otherTable');
+        self::fail('Should fail because of invalid table name');
+    }
+
     public function testGetDropTable(): void
     {
         $dropTableCommand = $this->qb->getDropTableCommand('testDb', 'testTable');

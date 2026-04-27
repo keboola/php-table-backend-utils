@@ -11,6 +11,7 @@ use Keboola\TableBackendUtils\Column\Bigquery\BigqueryColumn;
 use Keboola\TableBackendUtils\Column\ColumnCollection;
 use Keboola\TableBackendUtils\QueryBuilderException;
 use Keboola\TableBackendUtils\Table\Bigquery\BigqueryTableQueryBuilder;
+use LogicException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Keboola\TableBackendUtils\Functional\Bigquery\BigqueryBaseCase;
 use Throwable;
@@ -177,6 +178,22 @@ PRIMARY KEY (`id`,`type`) NOT ENFORCED
 SQL;
 
         $this->assertSame($expectedSql, $sql);
+    }
+
+    public function testGetRenameTableCommand(): void
+    {
+        $sql = $this->qb->getRenameTableCommand('mydataset', 'oldTable', 'newTable');
+        $this->assertSame('ALTER TABLE `mydataset`.`oldTable` RENAME TO `newTable`', $sql);
+    }
+
+    public function testGetSwapTableCommandThrows(): void
+    {
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage(
+            'BigQuery does not support atomic table swap; '
+            . 'use a chain of getRenameTableCommand() calls in the handler.',
+        );
+        $this->qb->getSwapTableCommand('mydataset', 'a', 'b');
     }
 
     public function testCreateTableWithInvalidPrimaryKey(): void

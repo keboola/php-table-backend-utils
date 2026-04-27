@@ -60,6 +60,42 @@ class SnowflakeTableQueryBuilderTest extends SnowflakeBaseCase
         $refOld->getRowsCount();
     }
 
+    public function testGetSwapTableCommand(): void
+    {
+        $testDb = self::TEST_SCHEMA;
+        $tableA = self::TABLE_GENERIC;
+        $tableB = 'swap_target';
+
+        $this->initTable();
+        // second table with the same shape so we can observe the swap
+        $this->connection->executeStatement(
+            sprintf(
+                'CREATE TABLE %s.%s ("id" INTEGER, "first_name" VARCHAR(32), "last_name" VARCHAR(32))',
+                '"' . $testDb . '"',
+                '"' . $tableB . '"',
+            ),
+        );
+        $this->insertRowToTable($testDb, $tableA, 1, 'franta', 'omacka');
+        $this->insertRowToTable($testDb, $tableB, 2, 'pepa', 'vonasek');
+        $this->insertRowToTable($testDb, $tableB, 3, 'jana', 'nova');
+
+        $refA = new SnowflakeTableReflection($this->connection, $testDb, $tableA);
+        $refB = new SnowflakeTableReflection($this->connection, $testDb, $tableB);
+        self::assertEquals(1, $refA->getRowsCount());
+        self::assertEquals(2, $refB->getRowsCount());
+
+        $sql = $this->qb->getSwapTableCommand($testDb, $tableA, $tableB);
+        self::assertEquals(
+            "ALTER TABLE \"{$testDb}\".\"{$tableA}\" SWAP WITH \"{$testDb}\".\"{$tableB}\"",
+            $sql,
+        );
+        $this->connection->executeStatement($sql);
+
+        // After swap: row counts must be exchanged.
+        self::assertEquals(2, $refA->getRowsCount());
+        self::assertEquals(1, $refB->getRowsCount());
+    }
+
     public function testGetTruncateTableCommand(): void
     {
         $testDb = self::TEST_SCHEMA;
