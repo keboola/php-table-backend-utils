@@ -44,7 +44,9 @@ class SnowflakeDriver implements Driver
             $params['privateKeyPath'] = $this->certFilePath;
         }
 
-        $dsn = SnowflakeDSNGenerator::generateDSN($params);
+        $dsnParams = $params;
+        unset($dsnParams['queryTags'], $dsnParams['runId']);
+        $dsn = SnowflakeDSNGenerator::generateDSN($dsnParams);
 
         return new SnowflakeConnection($dsn, $params['user'], $params['password'] ?? '', $params);
     }

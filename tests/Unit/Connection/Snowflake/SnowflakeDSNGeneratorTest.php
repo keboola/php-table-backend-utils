@@ -31,8 +31,6 @@ class SnowflakeDSNGeneratorTest extends TestCase
             'database' => 'snowflake_db',
             'schema' => 'snowflake_schema',
             'warehouse' => 'snowflake_warehouse',
-            'runId' => 'snowflake_runId',
-            'queryTags' => [],
             'clientSessionKeepAlive' => true,
             'driverClass' => 'DBAL\DRIVER',
             'driverOptions' => [],
