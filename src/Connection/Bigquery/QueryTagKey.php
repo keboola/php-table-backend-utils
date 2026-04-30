@@ -13,6 +13,7 @@ enum QueryTagKey: string
     case KEBOOLA_RUN_ID = 'keboola_run_id';
     case KEBOOLA_BRANCH_ID = 'keboola_branch_id';
     case KEBOOLA_SERVICE = 'keboola_service';
+    case SERVICE = 'service';
 
     /**
      * Validates if the given string is a valid tag key
