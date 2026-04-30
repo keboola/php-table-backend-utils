@@ -21,7 +21,8 @@ class SnowflakeConnectionFactory
      *     'networkTimeout'?:int,
      *     'queryTimeout'?: int,
      *     'clientSessionKeepAlive'?: bool,
-     *     'maxBackoffAttempts'?:int
+     *     'maxBackoffAttempts'?:int,
+     *     'queryTags'?: array<string, string>
      * } $params
      */
     public static function getConnection(
@@ -73,7 +74,8 @@ class SnowflakeConnectionFactory
      *     'networkTimeout'?:int,
      *     'queryTimeout'?: int,
      *     'clientSessionKeepAlive'?: bool,
-     *     'maxBackoffAttempts'?:int
+     *     'maxBackoffAttempts'?:int,
+     *     'queryTags'?: array<string, string>
      * } $params
      */
     public static function getConnectionWithCert(
