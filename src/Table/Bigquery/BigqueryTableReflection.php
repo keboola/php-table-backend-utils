@@ -254,4 +254,40 @@ class BigqueryTableReflection implements TableReflectionInterface
             default => TableType::TABLE,
         };
     }
+
+    /**
+     * Returns the table-level description (BQ REST `description` field) or null when unset.
+     */
+    public function getTableDescription(): ?string
+    {
+        $this->throwIfNotExists();
+        $info = $this->getTableInfo();
+        if (!array_key_exists('description', $info)) {
+            return null;
+        }
+        /** @var string $description */
+        $description = $info['description'];
+        return $description;
+    }
+
+    /**
+     * Returns a map of column name => description (from BQ REST field schema).
+     * Columns without a description are omitted from the map.
+     *
+     * @return array<string, string>
+     */
+    public function getColumnsDescriptions(): array
+    {
+        $this->throwIfNotExists();
+        $info = $this->getTableInfo();
+        /** @var array{fields: array<BigqueryTableFieldSchema>} $schema */
+        $schema = $info['schema'];
+        $result = [];
+        foreach ($schema['fields'] as $row) {
+            if (isset($row['description']) && $row['description'] !== '') {
+                $result[$row['name']] = $row['description'];
+            }
+        }
+        return $result;
+    }
 }
