@@ -57,6 +57,33 @@ class SnowflakeTableReflectionTest extends SnowflakeBaseCase
         );
     }
 
+    public function testDescriptionReflection(): void
+    {
+        $this->cleanSchema(self::TEST_SCHEMA);
+        $this->createSchema(self::TEST_SCHEMA);
+
+        $this->connection->executeStatement(sprintf(
+            'CREATE OR REPLACE TABLE %s.%s (
+                "id" INTEGER COMMENT %s,
+                "name" VARCHAR(100)
+            ) COMMENT = %s',
+            SnowflakeQuote::quoteSingleIdentifier(self::TEST_SCHEMA),
+            SnowflakeQuote::quoteSingleIdentifier(self::TABLE_GENERIC),
+            SnowflakeQuote::quote('Customer identifier'),
+            SnowflakeQuote::quote('Curated customer table'),
+        ));
+
+        $ref = new SnowflakeTableReflection($this->connection, self::TEST_SCHEMA, self::TABLE_GENERIC);
+
+        self::assertSame('Curated customer table', $ref->getTableDefinition()->getDescription());
+
+        /** @var SnowflakeColumn[] $columns */
+        $columns = iterator_to_array($ref->getColumnsDefinitions()->getIterator());
+        self::assertSame('Customer identifier', $columns[0]->getDescription());
+        self::assertSame('Customer identifier', $columns[0]->getColumnDefinition()->getDescription());
+        self::assertNull($columns[1]->getDescription());
+    }
+
     public function testGetTableColumnsNamesCase(): void
     {
         $this->initTable();

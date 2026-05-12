@@ -140,6 +140,8 @@ class BigqueryTableReflection implements TableReflectionInterface
             $this->isTemporary(),
             $this->getColumnsDefinitions(),
             $this->getPrimaryKeysNames(),
+            $this->getTableType(),
+            is_string($this->getTableInfo()['description'] ?? null) ? $this->getTableInfo()['description'] : null,
         );
     }
 

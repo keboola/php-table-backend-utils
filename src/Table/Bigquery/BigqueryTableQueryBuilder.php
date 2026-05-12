@@ -225,6 +225,15 @@ class BigqueryTableQueryBuilder implements TableQueryBuilderInterface
                         $desiredColumnDefinition->getTypeOnlySQLDefinition(),
                     );
                     break;
+                case Common::KBC_METADATA_KEY_DESCRIPTION:
+                    $commands[$metadataKey] = sprintf(
+                        'ALTER TABLE %s.%s ALTER COLUMN %s SET OPTIONS (description=%s);',
+                        BigqueryQuote::quoteSingleIdentifier($schemaName),
+                        BigqueryQuote::quoteSingleIdentifier($tableName),
+                        BigqueryQuote::quoteSingleIdentifier($columnName),
+                        BigqueryQuote::quote($desiredColumnDefinition->getDescription() ?? ''),
+                    );
+                    break;
             }
         }
 

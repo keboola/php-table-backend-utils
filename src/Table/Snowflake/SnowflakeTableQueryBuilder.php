@@ -120,11 +120,19 @@ class SnowflakeTableQueryBuilder implements TableQueryBuilderInterface
             /** @var Snowflake $columnDefinition */
             $columnDefinition = $column->getColumnDefinition();
 
-            $columnsSqlDefinitions[] = sprintf(
+            $columnSql = sprintf(
                 '%s %s',
                 SnowflakeQuote::quoteSingleIdentifier($columnName),
                 $columnDefinition->getSQLDefinition(),
             );
+            if ($columnDefinition->getDescription() !== null) {
+                $columnSql .= sprintf(
+                    ' COMMENT %s',
+                    SnowflakeQuote::quote($columnDefinition->getDescription()),
+                );
+            }
+
+            $columnsSqlDefinitions[] = $columnSql;
         }
 
         // check that all PKs are valid columns

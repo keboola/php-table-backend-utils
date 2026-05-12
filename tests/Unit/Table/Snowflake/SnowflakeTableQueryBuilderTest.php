@@ -66,6 +66,33 @@ class SnowflakeTableQueryBuilderTest extends TestCase
         self::fail('Should fail because of invalid table name');
     }
 
+    public function testCreateTableWithColumnDescription(): void
+    {
+        $sql = $this->qb->getCreateTableCommand(
+            'testDb',
+            'testTable',
+            new ColumnCollection([
+                new SnowflakeColumn(
+                    'id',
+                    new Snowflake(Snowflake::TYPE_VARCHAR, [
+                        'nullable' => false,
+                        'description' => 'Customer-facing column description',
+                    ]),
+                ),
+            ]),
+        );
+
+        self::assertSame(
+            <<<'SQL'
+CREATE TABLE "testDb"."testTable"
+(
+"id" VARCHAR NOT NULL COMMENT 'Customer-facing column description'
+);
+SQL,
+            $sql,
+        );
+    }
+
     public function testRenameTableWithInvalidTableName(): void
     {
         $this->expectException(QueryBuilderException::class);

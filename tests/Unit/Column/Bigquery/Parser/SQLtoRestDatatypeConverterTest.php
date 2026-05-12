@@ -493,6 +493,28 @@ class SQLtoRestDatatypeConverterTest extends TestCase
         self::assertSame($expected, $rest);
     }
 
+    public function testDescription(): void
+    {
+        $col = new BigqueryColumn(
+            'myCol',
+            new Bigquery(
+                Bigquery::TYPE_STRING,
+                [
+                    'description' => 'Customer-facing column description',
+                ],
+            ),
+        );
+
+        self::assertSame(
+            [
+                'name' => 'myCol',
+                'type' => 'STRING',
+                'description' => 'Customer-facing column description',
+            ],
+            SQLtoRestDatatypeConverter::convertColumnToRestFormat($col),
+        );
+    }
+
     public static function definitionsErrors(): Generator
     {
         yield 'myCol ARRAY<>' => [

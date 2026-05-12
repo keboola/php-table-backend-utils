@@ -60,6 +60,31 @@ class SnowflakeTableQueryBuilderTest extends SnowflakeBaseCase
         $refOld->getRowsCount();
     }
 
+    public function testCreateTableWithColumnDescriptionAgainstBackend(): void
+    {
+        $this->cleanSchema(self::TEST_SCHEMA);
+        $this->createSchema(self::TEST_SCHEMA);
+
+        $this->connection->executeStatement($this->qb->getCreateTableCommand(
+            self::TEST_SCHEMA,
+            self::TABLE_GENERIC,
+            new ColumnCollection([
+                new SnowflakeColumn(
+                    'name',
+                    new Snowflake(Snowflake::TYPE_VARCHAR, ['description' => 'Customer name']),
+                ),
+            ]),
+            [],
+        ));
+
+        $ref = new SnowflakeTableReflection($this->connection, self::TEST_SCHEMA, self::TABLE_GENERIC);
+        /** @var SnowflakeColumn[] $columns */
+        $columns = iterator_to_array($ref->getColumnsDefinitions()->getIterator());
+
+        self::assertSame('Customer name', $columns[0]->getDescription());
+        self::assertSame('Customer name', $columns[0]->getColumnDefinition()->getDescription());
+    }
+
     public function testGetSwapTableCommand(): void
     {
         $testDb = self::TEST_SCHEMA;

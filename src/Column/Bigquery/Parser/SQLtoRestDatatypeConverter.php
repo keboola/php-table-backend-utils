@@ -201,6 +201,9 @@ final class SQLtoRestDatatypeConverter
                 $schema['defaultValueExpression'] = $definition->getDefault();
             }
         }
+        if ($definition->getDescription() !== null) {
+            $schema['description'] = $definition->getDescription();
+        }
         /** @phpstan-var BigqueryTableFieldSchema */
         return $schema;
     }
