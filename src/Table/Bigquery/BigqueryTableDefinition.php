@@ -51,7 +51,6 @@ final class BigqueryTableDefinition implements TableDefinitionInterface
         return $this->description;
     }
 
-    //@todo nema to ist do interface ?
     public function getSchemaName(): string
     {
         return $this->schemaName;
