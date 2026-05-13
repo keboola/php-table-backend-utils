@@ -226,12 +226,13 @@ class BigqueryTableQueryBuilder implements TableQueryBuilderInterface
                     );
                     break;
                 case Common::KBC_METADATA_KEY_DESCRIPTION:
+                    $description = $desiredColumnDefinition->getDescription();
                     $commands[$metadataKey] = sprintf(
                         'ALTER TABLE %s.%s ALTER COLUMN %s SET OPTIONS (description=%s);',
                         BigqueryQuote::quoteSingleIdentifier($schemaName),
                         BigqueryQuote::quoteSingleIdentifier($tableName),
                         BigqueryQuote::quoteSingleIdentifier($columnName),
-                        BigqueryQuote::quote($desiredColumnDefinition->getDescription() ?? ''),
+                        $description === null ? 'NULL' : BigqueryQuote::quote($description),
                     );
                     break;
             }

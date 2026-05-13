@@ -107,6 +107,16 @@ class BigqueryTableQueryBuilderTest extends TestCase
             ],
             [Common::KBC_METADATA_KEY_DESCRIPTION],
         ];
+
+        yield 'description clear (null)' => [
+            new Bigquery(Bigquery::TYPE_STRING, ['description' => null]),
+            [
+                Common::KBC_METADATA_KEY_DESCRIPTION => 'ALTER TABLE `mydataset`.`mytable`'
+                    . ' ALTER COLUMN `mycolumn`'
+                    . ' SET OPTIONS (description=NULL);',
+            ],
+            [Common::KBC_METADATA_KEY_DESCRIPTION],
+        ];
     }
 
     public static function alterColumnCommandInvalidProvider(): Generator
