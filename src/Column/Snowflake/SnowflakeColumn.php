@@ -75,13 +75,15 @@ final class SnowflakeColumn implements ColumnInterface
             $length = $info['length'];
         }
 
+        $description = $dbResponse['comment'] ?? null;
+
         return new self($dbResponse['name'], new Snowflake(
             $type,
             [
                 'nullable' => $dbResponse['null?'] === 'Y',
                 'length' => $length,
                 'default' => $default,
-                'description' => $dbResponse['comment'] ?? null,
+                'description' => $description === '' ? null : $description,
             ],
         ));
     }
