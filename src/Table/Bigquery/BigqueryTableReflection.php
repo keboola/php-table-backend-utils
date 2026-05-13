@@ -143,7 +143,7 @@ class BigqueryTableReflection implements TableReflectionInterface
             $this->isTemporary(),
             $this->getColumnsDefinitions(),
             $this->getPrimaryKeysNames(),
-            $this->getTableType(),
+            $this->resolveTableType($info),
             $description,
         );
     }
@@ -252,7 +252,15 @@ class BigqueryTableReflection implements TableReflectionInterface
 
     public function getTableType(): TableType
     {
-        $type = $this->getTableInfo()['type'] ?? 'TABLE';
+        return $this->resolveTableType($this->getTableInfo());
+    }
+
+    /**
+     * @param array<string, mixed> $info
+     */
+    private function resolveTableType(array $info): TableType
+    {
+        $type = $info['type'] ?? 'TABLE';
         return match ($type) {
             'EXTERNAL' => TableType::BIGQUERY_EXTERNAL,
             'VIEW', 'MATERIALIZED_VIEW' => TableType::VIEW,
