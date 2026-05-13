@@ -134,6 +134,9 @@ class BigqueryTableReflection implements TableReflectionInterface
 
     public function getTableDefinition(): TableDefinitionInterface
     {
+        $info = $this->getTableInfo();
+        $description = is_string($info['description'] ?? null) ? $info['description'] : null;
+
         return new BigqueryTableDefinition(
             $this->datasetName,
             $this->tableName,
@@ -141,7 +144,7 @@ class BigqueryTableReflection implements TableReflectionInterface
             $this->getColumnsDefinitions(),
             $this->getPrimaryKeysNames(),
             $this->getTableType(),
-            is_string($this->getTableInfo()['description'] ?? null) ? $this->getTableInfo()['description'] : null,
+            $description,
         );
     }
 
