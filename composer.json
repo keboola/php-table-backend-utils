@@ -69,5 +69,16 @@
         "allow-plugins": {
             "dealerdirect/phpcodesniffer-composer-installer": true
         }
-    }
+    },
+    "repositories": [
+        {
+            "type": "path",
+            "url": "packages/PhpDatatypes",
+            "options": {
+                "versions": {
+                    "keboola/php-datatypes": "99.99.99"
+                }
+            }
+        }
+    ]
 }
