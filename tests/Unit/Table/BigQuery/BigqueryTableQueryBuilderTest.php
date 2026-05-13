@@ -101,8 +101,9 @@ class BigqueryTableQueryBuilderTest extends TestCase
         yield 'description update' => [
             new Bigquery(Bigquery::TYPE_STRING, ['description' => 'Customer-facing column description']),
             [
-                Common::KBC_METADATA_KEY_DESCRIPTION
-                => "ALTER TABLE `mydataset`.`mytable` ALTER COLUMN `mycolumn` SET OPTIONS (description='Customer-facing column description');",
+                Common::KBC_METADATA_KEY_DESCRIPTION => 'ALTER TABLE `mydataset`.`mytable`'
+                    . ' ALTER COLUMN `mycolumn`'
+                    . " SET OPTIONS (description='Customer-facing column description');",
             ],
             [Common::KBC_METADATA_KEY_DESCRIPTION],
         ];
