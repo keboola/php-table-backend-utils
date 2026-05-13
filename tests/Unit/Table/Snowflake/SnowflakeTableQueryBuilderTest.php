@@ -186,6 +186,62 @@ SQL,
         );
     }
 
+    public function testGetColumnsDefinitionsUpdateBuildsSingleModifyStatement(): void
+    {
+        $sql = $this->qb->getUpdateColumnsFromDefinitionsQuery(
+            'testDb',
+            'testTable',
+            [
+                'amount' => [
+                    'existing' => new Snowflake('NUMERIC', [
+                        'length' => '12,2',
+                        'nullable' => false,
+                        'default' => '',
+                    ]),
+                    'desired' => new Snowflake('NUMERIC', [
+                        'length' => '14,2',
+                        'nullable' => true,
+                        'default' => '',
+                        'description' => 'Net amount in USD',
+                    ]),
+                    'updateDataType' => true,
+                    'updateNullable' => true,
+                    'updateDescription' => true,
+                ],
+                'legacy_note' => [
+                    'existing' => new Snowflake('VARCHAR', [
+                        'length' => '255',
+                        'nullable' => true,
+                        'default' => '',
+                        'description' => 'Legacy note',
+                    ]),
+                    'desired' => new Snowflake('VARCHAR', [
+                        'length' => '255',
+                        'nullable' => true,
+                        'default' => '',
+                    ]),
+                    'updateDescription' => true,
+                ],
+            ],
+        );
+
+        self::assertSame(
+            'ALTER TABLE "testDb"."testTable" MODIFY COLUMN "amount" DROP NOT NULL, '
+            . 'COLUMN "amount" SET DATA TYPE NUMERIC(14, 2), '
+            . 'COLUMN "amount" COMMENT \'Net amount in USD\', '
+            . 'COLUMN "legacy_note" UNSET COMMENT',
+            $sql,
+        );
+    }
+
+    public function testGetColumnsDefinitionsUpdateRequiresColumns(): void
+    {
+        $this->expectException(QueryBuilderException::class);
+        $this->expectExceptionMessage('At least one column update is required.');
+
+        $this->qb->getUpdateColumnsFromDefinitionsQuery('testDb', 'testTable', []);
+    }
+
     #[DataProvider('provideInvalidGetColumnDefinitionUpdate')]
     public function testInvalidGetColumnDefinitionUpdate(
         Snowflake $existingColumn,

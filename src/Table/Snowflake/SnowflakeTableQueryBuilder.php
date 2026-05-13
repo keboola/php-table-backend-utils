@@ -22,6 +22,7 @@ class SnowflakeTableQueryBuilder implements TableQueryBuilderInterface
     private const CANNOT_REDUCE_COMPLEX_LENGTH = 'cannotReduceComplexLength';
     private const INVALID_PKS_FOR_TABLE = 'invalidPKs';
     private const INVALID_TABLE_NAME = 'invalidTableName';
+    private const EMPTY_COLUMNS_TO_UPDATE = 'emptyColumnsToUpdate';
     public const TEMP_TABLE_PREFIX = '__temp_';
 
     public function getCreateTempTableCommand(string $schemaName, string $tableName, ColumnCollection $columns): string
@@ -267,14 +268,100 @@ class SnowflakeTableQueryBuilder implements TableQueryBuilderInterface
             SnowflakeQuote::quoteSingleIdentifier($schemaName),
             SnowflakeQuote::quoteSingleIdentifier($tableName),
         );
+        $sqlParts = $this->getUpdateColumnDefinitionSqlParts(
+            $existingColumnDefinition,
+            $desiredColumnDefinition,
+            $columnName,
+            null,
+        );
+        $partsWithColumnPrefix = array_map(function (string $part) use ($columnName) {
+            return sprintf(
+                'COLUMN %s %s',
+                SnowflakeQuote::quoteSingleIdentifier($columnName),
+                $part,
+            );
+        }, $sqlParts);
+        return $sql . implode(', ', $partsWithColumnPrefix);
+    }
+
+    /**
+     * @param array<string, array{
+     *     existing: Snowflake,
+     *     desired: Snowflake,
+     *     updateDefault?: bool,
+     *     updateNullable?: bool,
+     *     updateDataType?: bool,
+     *     updateDescription?: bool,
+     * }> $columns
+     */
+    public function getUpdateColumnsFromDefinitionsQuery(
+        string $schemaName,
+        string $tableName,
+        array $columns,
+    ): string {
+        if ($columns === []) {
+            throw new QueryBuilderException(
+                'At least one column update is required.',
+                self::EMPTY_COLUMNS_TO_UPDATE,
+            );
+        }
+
+        $sqlParts = [];
+        foreach ($columns as $columnName => $column) {
+            foreach ($this->getUpdateColumnDefinitionSqlParts(
+                $column['existing'],
+                $column['desired'],
+                $columnName,
+                [
+                    'default' => $column['updateDefault'] ?? false,
+                    'nullable' => $column['updateNullable'] ?? false,
+                    'dataType' => $column['updateDataType'] ?? false,
+                    'description' => $column['updateDescription'] ?? false,
+                ],
+            ) as $sqlPart) {
+                $sqlParts[] = sprintf(
+                    'COLUMN %s %s',
+                    SnowflakeQuote::quoteSingleIdentifier($columnName),
+                    $sqlPart,
+                );
+            }
+        }
+
+        if ($sqlParts === []) {
+            throw new QueryBuilderException(
+                'At least one column attribute update is required.',
+                self::EMPTY_COLUMNS_TO_UPDATE,
+            );
+        }
+
+        return sprintf(
+            'ALTER TABLE %s.%s MODIFY %s',
+            SnowflakeQuote::quoteSingleIdentifier($schemaName),
+            SnowflakeQuote::quoteSingleIdentifier($tableName),
+            implode(', ', $sqlParts),
+        );
+    }
+
+    /**
+     * @param array{default: bool, nullable: bool, dataType: bool, description: bool}|null $updates
+     * @return string[]
+     */
+    private function getUpdateColumnDefinitionSqlParts(
+        Snowflake $existingColumnDefinition,
+        Snowflake $desiredColumnDefinition,
+        string $columnName,
+        ?array $updates,
+    ): array {
         $sqlParts = [];
         // allowed from https://docs.snowflake.com/en/sql-reference/sql/alter-table-column
 
         // drop default
-        if ($existingColumnDefinition->getDefault() !== null
+        if ($this->shouldUpdateDefault($updates)
+            && $existingColumnDefinition->getDefault() !== null
             && $desiredColumnDefinition->getDefault() === null) {
             $sqlParts[] = 'DROP DEFAULT';
-        } elseif ($existingColumnDefinition->getDefault() !== $desiredColumnDefinition->getDefault()) {
+        } elseif ($this->shouldUpdateDefault($updates)
+            && $existingColumnDefinition->getDefault() !== $desiredColumnDefinition->getDefault()) {
             throw new QueryBuilderException(
                 sprintf(
                     'Cannot change default value of column "%s" from "%s" to "%s"',
@@ -286,15 +373,17 @@ class SnowflakeTableQueryBuilder implements TableQueryBuilderInterface
             );
         }
 
-        if ($existingColumnDefinition->isNullable() !== $desiredColumnDefinition->isNullable()) {
+        if ($this->shouldUpdateNullable($updates)
+            && $existingColumnDefinition->isNullable() !== $desiredColumnDefinition->isNullable()) {
             $sqlParts[] = $desiredColumnDefinition->isNullable() ? 'DROP NOT NULL' : 'SET NOT NULL';
         }
 
         $notSameLength = $existingColumnDefinition->getLength() !== $desiredColumnDefinition->getLength();
         $isNewLengthBigger = $existingColumnDefinition->getLength() < $desiredColumnDefinition->getLength();
+        $shouldUpdateDataType = $this->shouldUpdateDataType($updates);
 
         // increase precision
-        if ($existingColumnDefinition->isTypeWithComplexLength() && $notSameLength) {
+        if ($shouldUpdateDataType && $existingColumnDefinition->isTypeWithComplexLength() && $notSameLength) {
             if (!$desiredColumnDefinition->isTypeWithComplexLength()) {
                 throw new QueryBuilderException(
                     sprintf(
@@ -345,7 +434,7 @@ class SnowflakeTableQueryBuilder implements TableQueryBuilderInterface
                     self::CANNOT_DECREASE_PRECISION,
                 );
             }
-        } elseif ($notSameLength && $isNewLengthBigger) {
+        } elseif ($shouldUpdateDataType && $notSameLength && $isNewLengthBigger) {
             if ($desiredColumnDefinition->isTypeWithComplexLength()) {
                 throw new QueryBuilderException(
                     sprintf(
@@ -363,7 +452,7 @@ class SnowflakeTableQueryBuilder implements TableQueryBuilderInterface
                 $desiredColumnDefinition->getType(),
                 $desiredColumnDefinition->getLength(),
             );
-        } elseif ($notSameLength) {
+        } elseif ($shouldUpdateDataType && $notSameLength) {
             throw new QueryBuilderException(
                 sprintf(
                     'Cannot decrease length of column "%s" from "%s" to "%s"',
@@ -375,20 +464,52 @@ class SnowflakeTableQueryBuilder implements TableQueryBuilderInterface
             );
         }
 
-        if ($existingColumnDefinition->getDescription() !== $desiredColumnDefinition->getDescription()) {
-            $description = $desiredColumnDefinition->getDescription();
-            $sqlParts[] = $description === null
+        if ($this->shouldUpdateDescription($updates, $existingColumnDefinition, $desiredColumnDefinition)) {
+            $desiredDescription = $desiredColumnDefinition->getDescription();
+            $sqlParts[] = $desiredDescription === null || $desiredDescription === ''
                 ? 'UNSET COMMENT'
-                : sprintf('COMMENT %s', SnowflakeQuote::quote($description));
+                : sprintf('COMMENT %s', SnowflakeQuote::quote($desiredDescription));
         }
 
-        $partsWithColumnPrefix = array_map(function (string $part) use ($columnName) {
-            return sprintf(
-                'COLUMN %s %s',
-                SnowflakeQuote::quoteSingleIdentifier($columnName),
-                $part,
-            );
-        }, $sqlParts);
-        return $sql . implode(', ', $partsWithColumnPrefix);
+        return $sqlParts;
+    }
+
+    /**
+     * @param array{default: bool, nullable: bool, dataType: bool, description: bool}|null $updates
+     */
+    private function shouldUpdateDefault(?array $updates): bool
+    {
+        return $updates === null || $updates['default'];
+    }
+
+    /**
+     * @param array{default: bool, nullable: bool, dataType: bool, description: bool}|null $updates
+     */
+    private function shouldUpdateNullable(?array $updates): bool
+    {
+        return $updates === null || $updates['nullable'];
+    }
+
+    /**
+     * @param array{default: bool, nullable: bool, dataType: bool, description: bool}|null $updates
+     */
+    private function shouldUpdateDataType(?array $updates): bool
+    {
+        return $updates === null || $updates['dataType'];
+    }
+
+    /**
+     * @param array{default: bool, nullable: bool, dataType: bool, description: bool}|null $updates
+     */
+    private function shouldUpdateDescription(
+        ?array $updates,
+        Snowflake $existingColumnDefinition,
+        Snowflake $desiredColumnDefinition,
+    ): bool {
+        if ($updates === null) {
+            return $existingColumnDefinition->getDescription() !== $desiredColumnDefinition->getDescription();
+        }
+
+        return $updates['description'];
     }
 }
