@@ -136,7 +136,9 @@ class BigqueryTableReflection implements TableReflectionInterface
     {
         $this->throwIfNotExists();
         $info = $this->getTableInfo();
-        $description = is_string($info['description'] ?? null) ? $info['description'] : null;
+        $description = is_string($info['description'] ?? null) && $info['description'] !== ''
+            ? $info['description']
+            : null;
 
         return new BigqueryTableDefinition(
             $this->datasetName,

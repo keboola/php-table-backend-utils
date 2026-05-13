@@ -189,13 +189,23 @@ class SnowflakeTableQueryBuilder implements TableQueryBuilderInterface
             );
         }
 
-        return $this->getCreateTableCommand(
+        $sql = $this->getCreateTableCommand(
             $definition->getSchemaName(),
             $definition->getTableName(),
             $definition->getColumnsDefinitions(),
             $definePrimaryKeys === self::CREATE_TABLE_WITH_PRIMARY_KEYS
                 ? $definition->getPrimaryKeysNames()
                 : [],
+        );
+
+        if ($definition->getDescription() === null) {
+            return $sql;
+        }
+
+        return sprintf(
+            "%s\nCOMMENT = %s;",
+            rtrim($sql, ';'),
+            SnowflakeQuote::quote($definition->getDescription()),
         );
     }
 
@@ -363,6 +373,13 @@ class SnowflakeTableQueryBuilder implements TableQueryBuilderInterface
                 ),
                 self::CANNOT_DECREASE_LENGTH,
             );
+        }
+
+        if ($existingColumnDefinition->getDescription() !== $desiredColumnDefinition->getDescription()) {
+            $description = $desiredColumnDefinition->getDescription();
+            $sqlParts[] = $description === null
+                ? 'UNSET COMMENT'
+                : sprintf('COMMENT %s', SnowflakeQuote::quote($description));
         }
 
         $partsWithColumnPrefix = array_map(function (string $part) use ($columnName) {
