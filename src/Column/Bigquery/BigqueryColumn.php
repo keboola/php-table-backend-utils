@@ -29,6 +29,11 @@ class BigqueryColumn implements ColumnInterface
         return $this->columnName;
     }
 
+    public function getDescription(): ?string
+    {
+        return $this->columnDefinition->getDescription();
+    }
+
     /** @return Bigquery */
     public function getColumnDefinition(): DefinitionInterface
     {

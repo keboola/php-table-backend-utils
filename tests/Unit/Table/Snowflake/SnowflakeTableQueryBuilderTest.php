@@ -9,6 +9,7 @@ use Keboola\Datatype\Definition\Snowflake;
 use Keboola\TableBackendUtils\Column\ColumnCollection;
 use Keboola\TableBackendUtils\Column\Snowflake\SnowflakeColumn;
 use Keboola\TableBackendUtils\QueryBuilderException;
+use Keboola\TableBackendUtils\Table\Snowflake\SnowflakeTableDefinition;
 use Keboola\TableBackendUtils\Table\Snowflake\SnowflakeTableQueryBuilder;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -64,6 +65,58 @@ class SnowflakeTableQueryBuilderTest extends TestCase
         );
         $this->qb->getCreateTableCommand('testDb', 'testTab.', new ColumnCollection([]));
         self::fail('Should fail because of invalid table name');
+    }
+
+    public function testCreateTableWithColumnDescription(): void
+    {
+        $sql = $this->qb->getCreateTableCommand(
+            'testDb',
+            'testTable',
+            new ColumnCollection([
+                new SnowflakeColumn(
+                    'id',
+                    new Snowflake(Snowflake::TYPE_VARCHAR, [
+                        'nullable' => false,
+                        'description' => 'Customer-facing column description',
+                    ]),
+                ),
+            ]),
+        );
+
+        self::assertSame(
+            <<<'SQL'
+CREATE TABLE "testDb"."testTable"
+(
+"id" VARCHAR NOT NULL COMMENT 'Customer-facing column description'
+);
+SQL,
+            $sql,
+        );
+    }
+
+    public function testCreateTableFromDefinitionWithTableDescription(): void
+    {
+        $sql = $this->qb->getCreateTableCommandFromDefinition(new SnowflakeTableDefinition(
+            'testDb',
+            'testTable',
+            false,
+            new ColumnCollection([
+                new SnowflakeColumn('id', new Snowflake(Snowflake::TYPE_VARCHAR)),
+            ]),
+            [],
+            description: 'Curated customer table',
+        ));
+
+        self::assertSame(
+            <<<'SQL'
+CREATE TABLE "testDb"."testTable"
+(
+"id" VARCHAR
+)
+COMMENT = 'Curated customer table';
+SQL,
+            $sql,
+        );
     }
 
     public function testRenameTableWithInvalidTableName(): void
@@ -185,6 +238,18 @@ class SnowflakeTableQueryBuilderTest extends TestCase
             new Snowflake('NUMERIC', ['length' => '14,8', 'nullable' => true, 'default' => '']),
             /** @lang Snowflake */
             'ALTER TABLE "testDb"."testTable" MODIFY COLUMN "testColumn" SET DATA TYPE NUMERIC(14, 8)',
+        ];
+        yield 'set description' => [
+            new Snowflake('VARCHAR', ['nullable' => true, 'description' => null]),
+            new Snowflake('VARCHAR', ['nullable' => true, 'description' => 'Customer name']),
+            /** @lang Snowflake */
+            'ALTER TABLE "testDb"."testTable" MODIFY COLUMN "testColumn" COMMENT \'Customer name\'',
+        ];
+        yield 'unset description' => [
+            new Snowflake('VARCHAR', ['nullable' => true, 'description' => 'Customer name']),
+            new Snowflake('VARCHAR', ['nullable' => true, 'description' => null]),
+            /** @lang Snowflake */
+            'ALTER TABLE "testDb"."testTable" MODIFY COLUMN "testColumn" UNSET COMMENT',
         ];
         yield 'full set of changes (increase precision, drop nullable, drop default)' => [
             new Snowflake('NUMERIC', ['length' => '12,8', 'nullable' => true, 'default' => 'grunbread']),

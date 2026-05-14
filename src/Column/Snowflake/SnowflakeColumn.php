@@ -41,6 +41,11 @@ final class SnowflakeColumn implements ColumnInterface
         return $this->columnName;
     }
 
+    public function getDescription(): ?string
+    {
+        return $this->columnDefinition->getDescription();
+    }
+
     /**
      * @return Snowflake
      */
@@ -55,6 +60,7 @@ final class SnowflakeColumn implements ColumnInterface
      *     type: string,
      *     default: string,
      *     "null?": string,
+     *     comment?: string,
      * } $dbResponse
      */
     public static function createFromDB(array $dbResponse): SnowflakeColumn
@@ -69,12 +75,15 @@ final class SnowflakeColumn implements ColumnInterface
             $length = $info['length'];
         }
 
+        $description = $dbResponse['comment'] ?? null;
+
         return new self($dbResponse['name'], new Snowflake(
             $type,
             [
                 'nullable' => $dbResponse['null?'] === 'Y',
                 'length' => $length,
                 'default' => $default,
+                'description' => $description === '' ? null : $description,
             ],
         ));
     }

@@ -13,16 +13,15 @@ use Keboola\TableBackendUtils\QueryBuilderException;
 use Keboola\TableBackendUtils\Table\Bigquery\BigqueryTableQueryBuilder;
 use LogicException;
 use PHPUnit\Framework\Attributes\DataProvider;
-use Tests\Keboola\TableBackendUtils\Functional\Bigquery\BigqueryBaseCase;
+use PHPUnit\Framework\TestCase;
 use Throwable;
 
-class BigqueryTableQueryBuilderTest extends BigqueryBaseCase
+class BigqueryTableQueryBuilderTest extends TestCase
 {
     private BigqueryTableQueryBuilder $qb;
 
     public function setUp(): void
     {
-        parent::setUp();
         $this->qb = new BigqueryTableQueryBuilder();
     }
 
@@ -97,6 +96,26 @@ class BigqueryTableQueryBuilderTest extends BigqueryBaseCase
                 => "ALTER TABLE `mydataset`.`mytable` ALTER COLUMN `mycolumn` SET DEFAULT 'xyz';",
             ],
             [Common::KBC_METADATA_KEY_DEFAULT],
+        ];
+
+        yield 'description update' => [
+            new Bigquery(Bigquery::TYPE_STRING, ['description' => 'Customer-facing column description']),
+            [
+                Common::KBC_METADATA_KEY_DESCRIPTION => 'ALTER TABLE `mydataset`.`mytable`'
+                    . ' ALTER COLUMN `mycolumn`'
+                    . " SET OPTIONS (description='Customer-facing column description');",
+            ],
+            [Common::KBC_METADATA_KEY_DESCRIPTION],
+        ];
+
+        yield 'description clear (null)' => [
+            new Bigquery(Bigquery::TYPE_STRING, ['description' => null]),
+            [
+                Common::KBC_METADATA_KEY_DESCRIPTION => 'ALTER TABLE `mydataset`.`mytable`'
+                    . ' ALTER COLUMN `mycolumn`'
+                    . ' SET OPTIONS (description=NULL);',
+            ],
+            [Common::KBC_METADATA_KEY_DESCRIPTION],
         ];
     }
 

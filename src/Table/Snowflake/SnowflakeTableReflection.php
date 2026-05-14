@@ -42,6 +42,8 @@ final class SnowflakeTableReflection implements TableReflectionInterface
 
     private ?int $rowCount = null;
 
+    private ?string $description = null;
+
     public function __construct(Connection $connection, string $schemaName, string $tableName)
     {
         $this->tableName = $tableName;
@@ -57,11 +59,11 @@ final class SnowflakeTableReflection implements TableReflectionInterface
         if ($force === false && $this->isTemporary !== null) {
             return;
         }
-        /** @var array<array{TABLE_TYPE:string,BYTES:string,ROW_COUNT:string}> $row */
+        /** @var array<array{TABLE_TYPE:string,BYTES:string,ROW_COUNT:string,COMMENT:string|null}> $row */
         $row = $this->connection->fetchAllAssociative(
             sprintf(
             //phpcs:ignore
-                'SELECT TABLE_TYPE,BYTES,ROW_COUNT FROM information_schema.tables WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s;',
+                'SELECT TABLE_TYPE,BYTES,ROW_COUNT,COMMENT FROM information_schema.tables WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s;',
                 SnowflakeQuote::quote($this->schemaName),
                 SnowflakeQuote::quote($this->tableName),
             ),
@@ -71,6 +73,7 @@ final class SnowflakeTableReflection implements TableReflectionInterface
         }
         $this->sizeBytes = (int) $row[0]['BYTES'];
         $this->rowCount = (int) $row[0]['ROW_COUNT'];
+        $this->description = $row[0]['COMMENT'] === '' ? null : $row[0]['COMMENT'];
 
         switch (strtoupper($row[0]['TABLE_TYPE'])) {
             case 'BASE TABLE':
@@ -287,6 +290,7 @@ WHERE REFERENCED_OBJECT_TYPE = %s
             $this->getColumnsDefinitions(),
             $this->getPrimaryKeysNames(),
             $this->tableType,
+            $this->description,
         );
     }
 

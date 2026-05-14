@@ -33,7 +33,7 @@ class SnowflakeColumnTest extends TestCase
             'unique key' => '',
             'check' => '',
             'expression' => '',
-            'comment' => '',
+            'comment' => 'Customer-facing column description',
             'policy name' => '',
         ];
 
@@ -43,6 +43,8 @@ class SnowflakeColumnTest extends TestCase
         self::assertEquals('VARCHAR', $column->getColumnDefinition()->getType());
         self::assertEquals('', $column->getColumnDefinition()->getDefault());
         self::assertEquals('16777216', $column->getColumnDefinition()->getLength());
+        self::assertSame('Customer-facing column description', $column->getDescription());
+        self::assertSame('Customer-facing column description', $column->getColumnDefinition()->getDescription());
     }
 
     public function testVarcharCollate(): void

@@ -32,6 +32,7 @@ final class SnowflakeTableDefinition implements TableDefinitionInterface
         ColumnCollection $columns,
         array $primaryKeysNames,
         private readonly TableType $tableType = TableType::TABLE,
+        private readonly ?string $description = null,
     ) {
         $this->schemaName = $schemaName;
         $this->tableName = $tableName;
@@ -43,6 +44,11 @@ final class SnowflakeTableDefinition implements TableDefinitionInterface
     public function getTableName(): string
     {
         return $this->tableName;
+    }
+
+    public function getDescription(): ?string
+    {
+        return $this->description;
     }
 
     public function getSchemaName(): string

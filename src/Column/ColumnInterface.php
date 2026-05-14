@@ -13,6 +13,8 @@ interface ColumnInterface extends CollectionItemInterface
 
     public function getColumnName(): string;
 
+    public function getDescription(): ?string;
+
     public function getColumnDefinition(): DefinitionInterface;
 
     /**

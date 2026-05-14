@@ -25,11 +25,12 @@ final class RESTtoSQLDatatypeConverter
         $default = $dbResponse['defaultValueExpression'] ?? null;
         $length = self::getTypeLength($type, $dbResponse);
 
-        /** @var array{length?:string|null, nullable?:bool, default?:string|null} $options */
+        /** @var array{length?:string|null, nullable?:bool, default?:string|null, description?:string|null} $options */
         $options = [
             'nullable' => self::isNullable($dbResponse),
             'length' => $length,
             'default' => $default,
+            'description' => $dbResponse['description'] ?? null,
         ];
         return new Bigquery(
             $type,

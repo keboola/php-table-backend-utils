@@ -43,6 +43,31 @@ class BigqueryTableReflectionTest extends BigqueryBaseCase
         );
     }
 
+    public function testDescriptionReflection(): void
+    {
+        $this->cleanDataset(self::TEST_SCHEMA);
+        $this->createDataset(self::TEST_SCHEMA);
+
+        $this->bqClient->runQuery($this->bqClient->query(sprintf(
+            'CREATE OR REPLACE TABLE %s.%s (
+                `id` INTEGER OPTIONS(description="Customer identifier"),
+                `name` STRING
+            ) OPTIONS(description="Curated customer table")',
+            BigqueryQuote::quoteSingleIdentifier(self::TEST_SCHEMA),
+            BigqueryQuote::quoteSingleIdentifier(self::TABLE_GENERIC),
+        )));
+
+        $ref = new BigqueryTableReflection($this->bqClient, self::TEST_SCHEMA, self::TABLE_GENERIC);
+
+        self::assertSame('Curated customer table', $ref->getTableDefinition()->getDescription());
+
+        /** @var BigqueryColumn[] $columns */
+        $columns = iterator_to_array($ref->getColumnsDefinitions()->getIterator());
+        self::assertSame('Customer identifier', $columns[0]->getDescription());
+        self::assertSame('Customer identifier', $columns[0]->getColumnDefinition()->getDescription());
+        self::assertNull($columns[1]->getDescription());
+    }
+
     #[DataProvider('tableColsDataProvider')]
     public function testColumnDefinition(
         string $sqlDef,

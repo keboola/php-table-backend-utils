@@ -32,6 +32,7 @@ final class BigqueryTableDefinition implements TableDefinitionInterface
         ColumnCollection $columns,
         array $primaryKeysNames,
         private readonly TableType $tableType = TableType::TABLE,
+        private readonly ?string $description = null,
     ) {
         $this->schemaName = $schemaName;
         $this->tableName = $tableName;
@@ -45,7 +46,11 @@ final class BigqueryTableDefinition implements TableDefinitionInterface
         return $this->tableName;
     }
 
-    //@todo nema to ist do interface ?
+    public function getDescription(): ?string
+    {
+        return $this->description;
+    }
+
     public function getSchemaName(): string
     {
         return $this->schemaName;

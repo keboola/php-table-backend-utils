@@ -40,6 +40,8 @@ class BigqueryColumnTest extends TestCase
         self::assertEquals('STRING', $column->getColumnDefinition()->getType());
         self::assertEquals('', $column->getColumnDefinition()->getDefault());
         self::assertEquals('50', $column->getColumnDefinition()->getLength());
+        self::assertSame('string', $column->getDescription());
+        self::assertSame('string', $column->getColumnDefinition()->getDescription());
     }
 
     public function testCreateFromDBNotNullInt(): void

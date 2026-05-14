@@ -8,6 +8,7 @@ use Generator;
 use Google\Cloud\BigQuery\Exception\JobException;
 use Google\Cloud\Core\Exception\NotFoundException;
 use Keboola\Datatype\Definition\Bigquery;
+use Keboola\Datatype\Definition\Common;
 use Keboola\TableBackendUtils\Column\Bigquery\BigqueryColumn;
 use Keboola\TableBackendUtils\Column\ColumnCollection;
 use Keboola\TableBackendUtils\QueryBuilderException;
@@ -304,5 +305,39 @@ EOT
             self::TABLE_GENERIC,
         );
         self::assertSame(['col1', 'col3'], $tableReflection->getColumnsNames());
+    }
+
+    public function testAlterColumnDescriptionAgainstBackend(): void
+    {
+        $this->cleanDataset(self::TEST_SCHEMA);
+        $this->createDataset(self::TEST_SCHEMA);
+
+        $this->bqClient->runQuery($this->bqClient->query($this->qb->getCreateTableCommand(
+            self::TEST_SCHEMA,
+            self::TABLE_GENERIC,
+            new ColumnCollection([
+                new BigqueryColumn(
+                    'col1',
+                    new Bigquery(Bigquery::TYPE_STRING, ['nullable' => false]),
+                ),
+            ]),
+            [],
+        )));
+
+        $commands = $this->qb->getUpdateColumnFromDefinitionQuery(
+            new Bigquery(Bigquery::TYPE_STRING, ['description' => 'Customer name']),
+            self::TEST_SCHEMA,
+            self::TABLE_GENERIC,
+            'col1',
+            [Common::KBC_METADATA_KEY_DESCRIPTION],
+        );
+
+        $this->bqClient->runQuery($this->bqClient->query($commands[Common::KBC_METADATA_KEY_DESCRIPTION]));
+
+        $tableReflection = new BigqueryTableReflection($this->bqClient, self::TEST_SCHEMA, self::TABLE_GENERIC);
+        /** @var BigqueryColumn[] $reflectedColumns */
+        $reflectedColumns = iterator_to_array($tableReflection->getColumnsDefinitions()->getIterator());
+        self::assertSame('Customer name', $reflectedColumns[0]->getDescription());
+        self::assertSame('Customer name', $reflectedColumns[0]->getColumnDefinition()->getDescription());
     }
 }
