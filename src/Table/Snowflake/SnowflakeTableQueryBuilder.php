@@ -382,6 +382,14 @@ class SnowflakeTableQueryBuilder implements TableQueryBuilderInterface
         $isNewLengthBigger = $existingColumnDefinition->getLength() < $desiredColumnDefinition->getLength();
         $shouldUpdateDataType = $this->shouldUpdateDataType($updates);
 
+        if ($shouldUpdateDataType && $existingColumnDefinition->getType() !== $desiredColumnDefinition->getType()) {
+            $sqlParts[] = sprintf(
+                'SET DATA TYPE %s',
+                $this->getDataTypeDefinitionSql($desiredColumnDefinition),
+            );
+            $shouldUpdateDataType = false;
+        }
+
         // increase precision
         if ($shouldUpdateDataType && $existingColumnDefinition->isTypeWithComplexLength() && $notSameLength) {
             if (!$desiredColumnDefinition->isTypeWithComplexLength()) {
@@ -472,6 +480,33 @@ class SnowflakeTableQueryBuilder implements TableQueryBuilderInterface
         }
 
         return $sqlParts;
+    }
+
+    private function getDataTypeDefinitionSql(Snowflake $desiredColumnDefinition): string
+    {
+        if ($desiredColumnDefinition->getLength() === null) {
+            return $desiredColumnDefinition->getType();
+        }
+
+        if (!$desiredColumnDefinition->isTypeWithComplexLength()) {
+            return sprintf(
+                '%s(%s)',
+                $desiredColumnDefinition->getType(),
+                $desiredColumnDefinition->getLength(),
+            );
+        }
+
+        [
+            'numeric_precision' => $desiredPrecision,
+            'numeric_scale' => $desiredScale,
+        ] = $desiredColumnDefinition->getArrayFromLength();
+
+        return sprintf(
+            '%s(%s, %s)',
+            $desiredColumnDefinition->getType(),
+            $desiredPrecision,
+            $desiredScale,
+        );
     }
 
     /**
