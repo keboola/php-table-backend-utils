@@ -9,7 +9,6 @@ use Keboola\TableBackendUtils\Column\Bigquery\Parser\Tokens\TokenizerNestedToken
 use Keboola\TableBackendUtils\Column\Bigquery\Parser\Tokens\TokenizerToken;
 use Keboola\TableBackendUtils\Column\Bigquery\Parser\Tokens\TokenizerTokenWithLevel;
 use RuntimeException;
-use const PREG_NO_ERROR;
 
 /**
  * Class to tokenize SQL complex types definition in BigQuery
@@ -110,7 +109,7 @@ EOD;
                 continue;
             }
 
-            if (preg_match(self::REGEX_MATCH_NAME, substr($input, $index), $matchName, PREG_NO_ERROR)) {
+            if (preg_match(self::REGEX_MATCH_NAME, substr($input, $index), $matchName)) {
                 $positionCharacterAfter = $index + strlen($matchName[0]);
                 if ($length > $positionCharacterAfter && $input[$positionCharacterAfter] === ' ') {
                     if ($expectTypeNext) {
@@ -128,7 +127,7 @@ EOD;
                 }
             }
 
-            if (preg_match(self::REGEX_MATCH_TYPE, substr($input, $index), $matchType, PREG_NO_ERROR)) {
+            if (preg_match(self::REGEX_MATCH_TYPE, substr($input, $index), $matchType)) {
                 if ($expectDelimiterOrCloseNext) {
                     throw new ParsingComplexTypeLengthException(sprintf(
                         // phpcs:ignore
