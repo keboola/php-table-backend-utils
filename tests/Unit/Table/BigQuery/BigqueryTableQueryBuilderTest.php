@@ -205,6 +205,27 @@ SQL;
         $this->assertSame('ALTER TABLE `mydataset`.`oldTable` RENAME TO `newTable`', $sql);
     }
 
+    public function testAddColumnCommandIncludesDescription(): void
+    {
+        $sql = $this->qb->getAddColumnCommand(
+            'mydataset',
+            'mytable',
+            new BigqueryColumn(
+                'customer_id',
+                new Bigquery(Bigquery::TYPE_STRING, [
+                    'nullable' => true,
+                    'description' => 'Customer identifier',
+                ]),
+            ),
+        );
+
+        self::assertSame(
+            'ALTER TABLE `mydataset`.`mytable` ADD COLUMN `customer_id` STRING '
+                . "OPTIONS(description='Customer identifier')",
+            $sql,
+        );
+    }
+
     public function testGetSwapTableCommandThrows(): void
     {
         $this->expectException(LogicException::class);

@@ -143,6 +143,12 @@ class BigqueryTableQueryBuilder implements TableQueryBuilderInterface
 
     public function getAddColumnCommand(string $schemaName, string $tableName, BigqueryColumn $columnDefinition): string
     {
+        $columnSqlDefinition = $columnDefinition->getColumnDefinition()->getSQLDefinition();
+        $description = $columnDefinition->getColumnDefinition()->getDescription();
+        if ($description !== null) {
+            $columnSqlDefinition .= sprintf(' OPTIONS(description=%s)', BigqueryQuote::quote($description));
+        }
+
         assert(
             $columnDefinition->getColumnDefinition()->getDefault() === null,
             'You cannot add a REQUIRED column to an existing table schema.',
@@ -156,7 +162,7 @@ class BigqueryTableQueryBuilder implements TableQueryBuilderInterface
             BigqueryQuote::quoteSingleIdentifier($schemaName),
             BigqueryQuote::quoteSingleIdentifier($tableName),
             BigqueryQuote::quoteSingleIdentifier($columnDefinition->getColumnName()),
-            $columnDefinition->getColumnDefinition()->getSQLDefinition(),
+            $columnSqlDefinition,
         );
     }
 
