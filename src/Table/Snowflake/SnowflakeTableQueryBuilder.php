@@ -16,6 +16,7 @@ class SnowflakeTableQueryBuilder implements TableQueryBuilderInterface
 {
     private const CANNOT_CHANGE_DEFAULT_VALUE = 'cannotChangeDefaultValue';
     private const CANNOT_CHANGE_SCALE = 'cannotChangeScale';
+    private const CANNOT_CHANGE_TYPE = 'cannotChangeType';
     private const CANNOT_DECREASE_LENGTH = 'cannotDecreaseLength';
     private const CANNOT_DECREASE_PRECISION = 'cannotDecreasePrecision';
     private const CANNOT_INTRODUCE_COMPLEX_LENGTH = 'cannotIntroduceComplexLength';
@@ -383,11 +384,15 @@ class SnowflakeTableQueryBuilder implements TableQueryBuilderInterface
         $shouldUpdateDataType = $this->shouldUpdateDataType($updates);
 
         if ($shouldUpdateDataType && $existingColumnDefinition->getType() !== $desiredColumnDefinition->getType()) {
-            $sqlParts[] = sprintf(
-                'SET DATA TYPE %s',
-                $this->getDataTypeDefinitionSql($desiredColumnDefinition),
+            throw new QueryBuilderException(
+                sprintf(
+                    'Cannot change type of column "%s" from "%s" to "%s"',
+                    $columnName,
+                    $existingColumnDefinition->getType(),
+                    $desiredColumnDefinition->getType(),
+                ),
+                self::CANNOT_CHANGE_TYPE,
             );
-            $shouldUpdateDataType = false;
         }
 
         // increase precision
@@ -424,14 +429,7 @@ class SnowflakeTableQueryBuilder implements TableQueryBuilderInterface
                 );
             }
 
-            if ($existingPrecision < $desiredPrecision) {
-                $sqlParts[] = sprintf(
-                    'SET DATA TYPE %s(%s, %s)',
-                    $desiredColumnDefinition->getType(),
-                    $desiredPrecision,
-                    $desiredScale,
-                );
-            } else {
+            if ($existingPrecision >= $desiredPrecision) {
                 throw new QueryBuilderException(
                     sprintf(
                         'Cannot decrease precision of column "%s" from "%s" to "%s"',
@@ -442,6 +440,13 @@ class SnowflakeTableQueryBuilder implements TableQueryBuilderInterface
                     self::CANNOT_DECREASE_PRECISION,
                 );
             }
+
+            $sqlParts[] = sprintf(
+                'SET DATA TYPE %s(%s, %s)',
+                $desiredColumnDefinition->getType(),
+                $desiredPrecision,
+                $desiredScale,
+            );
         } elseif ($shouldUpdateDataType && $notSameLength && $isNewLengthBigger) {
             if ($desiredColumnDefinition->isTypeWithComplexLength()) {
                 throw new QueryBuilderException(

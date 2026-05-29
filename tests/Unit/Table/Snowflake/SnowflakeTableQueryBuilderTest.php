@@ -343,5 +343,10 @@ SQL,
             new Snowflake('NUMERIC', ['length' => '12,10', 'nullable' => true, 'default' => '']),
             'Cannot change scale of a column "testColumn" from "8" to "10"',
         ];
+        yield 'change type' => [
+            new Snowflake('VARCHAR', ['length' => '255', 'nullable' => true, 'default' => '']),
+            new Snowflake('NUMBER', ['length' => '10,2', 'nullable' => true, 'default' => '']),
+            'Cannot change type of column "testColumn" from "VARCHAR" to "NUMBER"',
+        ];
     }
 }
