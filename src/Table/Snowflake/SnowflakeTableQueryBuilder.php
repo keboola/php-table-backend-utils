@@ -487,33 +487,6 @@ class SnowflakeTableQueryBuilder implements TableQueryBuilderInterface
         return $sqlParts;
     }
 
-    private function getDataTypeDefinitionSql(Snowflake $desiredColumnDefinition): string
-    {
-        if ($desiredColumnDefinition->getLength() === null) {
-            return $desiredColumnDefinition->getType();
-        }
-
-        if (!$desiredColumnDefinition->isTypeWithComplexLength()) {
-            return sprintf(
-                '%s(%s)',
-                $desiredColumnDefinition->getType(),
-                $desiredColumnDefinition->getLength(),
-            );
-        }
-
-        [
-            'numeric_precision' => $desiredPrecision,
-            'numeric_scale' => $desiredScale,
-        ] = $desiredColumnDefinition->getArrayFromLength();
-
-        return sprintf(
-            '%s(%s, %s)',
-            $desiredColumnDefinition->getType(),
-            $desiredPrecision,
-            $desiredScale,
-        );
-    }
-
     /**
      * @param array{default: bool, nullable: bool, dataType: bool, description: bool}|null $updates
      */
