@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Keboola\TableBackendUtils\Table\Snowflake;
 
 use Keboola\Datatype\Definition\Snowflake;
-use Keboola\Storage\Tables\Description\BackendDescriptionTruncator;
 use Keboola\TableBackendUtils\Column\ColumnCollection;
 use Keboola\TableBackendUtils\Column\Snowflake\SnowflakeColumn;
 use Keboola\TableBackendUtils\Escaping\Snowflake\SnowflakeQuote;
@@ -26,6 +25,9 @@ class SnowflakeTableQueryBuilder implements TableQueryBuilderInterface
     private const INVALID_TABLE_NAME = 'invalidTableName';
     private const EMPTY_COLUMNS_TO_UPDATE = 'emptyColumnsToUpdate';
     public const TEMP_TABLE_PREFIX = '__temp_';
+
+    /** Snowflake hard limit for a column/table COMMENT (characters). */
+    public const COLUMN_COMMENT_MAX_LENGTH = 16_384;
 
     public function getCreateTempTableCommand(string $schemaName, string $tableName, ColumnCollection $columns): string
     {
@@ -529,6 +531,8 @@ class SnowflakeTableQueryBuilder implements TableQueryBuilderInterface
 
     private static function truncateDescription(string $description): string
     {
-        return (string) BackendDescriptionTruncator::truncate($description, Snowflake::METADATA_BACKEND);
+        return mb_strlen($description) > self::COLUMN_COMMENT_MAX_LENGTH
+            ? mb_substr($description, 0, self::COLUMN_COMMENT_MAX_LENGTH)
+            : $description;
     }
 }

@@ -6,7 +6,6 @@ namespace Tests\Keboola\TableBackendUtils\Unit\Table\Snowflake;
 
 use Generator;
 use Keboola\Datatype\Definition\Snowflake;
-use Keboola\Storage\Tables\Description\BackendDescriptionTruncator;
 use Keboola\TableBackendUtils\Column\ColumnCollection;
 use Keboola\TableBackendUtils\Column\Snowflake\SnowflakeColumn;
 use Keboola\TableBackendUtils\QueryBuilderException;
@@ -249,7 +248,7 @@ SQL,
             new Snowflake('VARCHAR', ['nullable' => true, 'description' => null]),
             new Snowflake('VARCHAR', [
                 'nullable' => true,
-                'description' => str_repeat('x', BackendDescriptionTruncator::SNOWFLAKE_DESCRIPTION_MAX_LENGTH + 1),
+                'description' => str_repeat('x', SnowflakeTableQueryBuilder::COLUMN_COMMENT_MAX_LENGTH + 1),
             ]),
             'testDb',
             'testTable',
@@ -259,7 +258,7 @@ SQL,
         self::assertSame(
             sprintf(
                 'ALTER TABLE "testDb"."testTable" MODIFY COLUMN "testColumn" COMMENT \'%s\'',
-                str_repeat('x', BackendDescriptionTruncator::SNOWFLAKE_DESCRIPTION_MAX_LENGTH),
+                str_repeat('x', SnowflakeTableQueryBuilder::COLUMN_COMMENT_MAX_LENGTH),
             ),
             $sql,
         );
