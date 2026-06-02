@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Keboola\TableBackendUtils\Table\Snowflake;
 
 use Keboola\Datatype\Definition\Snowflake;
+use Keboola\Storage\Tables\Description\BackendDescriptionTruncator;
 use Keboola\TableBackendUtils\Column\ColumnCollection;
 use Keboola\TableBackendUtils\Column\Snowflake\SnowflakeColumn;
 use Keboola\TableBackendUtils\Escaping\Snowflake\SnowflakeQuote;
@@ -130,7 +131,7 @@ class SnowflakeTableQueryBuilder implements TableQueryBuilderInterface
             if ($columnDefinition->getDescription() !== null) {
                 $columnSql .= sprintf(
                     ' COMMENT %s',
-                    SnowflakeQuote::quote($columnDefinition->getDescription()),
+                    SnowflakeQuote::quote(self::truncateDescription($columnDefinition->getDescription())),
                 );
             }
 
@@ -207,7 +208,7 @@ class SnowflakeTableQueryBuilder implements TableQueryBuilderInterface
         return sprintf(
             "%s\nCOMMENT = %s;",
             rtrim($sql, ';'),
-            SnowflakeQuote::quote($definition->getDescription()),
+            SnowflakeQuote::quote(self::truncateDescription($definition->getDescription())),
         );
     }
 
@@ -481,7 +482,7 @@ class SnowflakeTableQueryBuilder implements TableQueryBuilderInterface
             $desiredDescription = $desiredColumnDefinition->getDescription();
             $sqlParts[] = $desiredDescription === null || $desiredDescription === ''
                 ? 'UNSET COMMENT'
-                : sprintf('COMMENT %s', SnowflakeQuote::quote($desiredDescription));
+                : sprintf('COMMENT %s', SnowflakeQuote::quote(self::truncateDescription($desiredDescription)));
         }
 
         return $sqlParts;
@@ -524,5 +525,10 @@ class SnowflakeTableQueryBuilder implements TableQueryBuilderInterface
         }
 
         return $updates['description'];
+    }
+
+    private static function truncateDescription(string $description): string
+    {
+        return (string) BackendDescriptionTruncator::truncate($description, Snowflake::METADATA_BACKEND);
     }
 }

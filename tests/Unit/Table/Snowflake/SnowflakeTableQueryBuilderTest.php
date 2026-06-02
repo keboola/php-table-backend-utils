@@ -6,6 +6,7 @@ namespace Tests\Keboola\TableBackendUtils\Unit\Table\Snowflake;
 
 use Generator;
 use Keboola\Datatype\Definition\Snowflake;
+use Keboola\Storage\Tables\Description\BackendDescriptionTruncator;
 use Keboola\TableBackendUtils\Column\ColumnCollection;
 use Keboola\TableBackendUtils\Column\Snowflake\SnowflakeColumn;
 use Keboola\TableBackendUtils\QueryBuilderException;
@@ -240,6 +241,28 @@ SQL,
         $this->expectExceptionMessage('At least one column update is required.');
 
         $this->qb->getUpdateColumnsFromDefinitionsQuery('testDb', 'testTable', []);
+    }
+
+    public function testGetColumnDefinitionUpdateTruncatesLongComment(): void
+    {
+        $sql = $this->qb->getUpdateColumnFromDefinitionQuery(
+            new Snowflake('VARCHAR', ['nullable' => true, 'description' => null]),
+            new Snowflake('VARCHAR', [
+                'nullable' => true,
+                'description' => str_repeat('x', BackendDescriptionTruncator::SNOWFLAKE_DESCRIPTION_MAX_LENGTH + 1),
+            ]),
+            'testDb',
+            'testTable',
+            'testColumn',
+        );
+
+        self::assertSame(
+            sprintf(
+                'ALTER TABLE "testDb"."testTable" MODIFY COLUMN "testColumn" COMMENT \'%s\'',
+                str_repeat('x', BackendDescriptionTruncator::SNOWFLAKE_DESCRIPTION_MAX_LENGTH),
+            ),
+            $sql,
+        );
     }
 
     #[DataProvider('provideInvalidGetColumnDefinitionUpdate')]
