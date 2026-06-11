@@ -36,6 +36,20 @@ final class SnowflakeColumn implements ColumnInterface
         );
     }
 
+    /**
+     * Whether this column matches the generic non-typed (string) column shape produced by
+     * {@see self::createGenericColumn()}: a length-less VARCHAR NOT NULL DEFAULT ''. Scopes
+     * non-typed handling so other length-less types (e.g. TIMESTAMP_NTZ without precision) keep
+     * strict typing.
+     */
+    public function isGenericColumn(): bool
+    {
+        return $this->columnDefinition->getType() === Snowflake::TYPE_VARCHAR
+            && $this->columnDefinition->getLength() === null
+            && !$this->columnDefinition->isNullable()
+            && $this->columnDefinition->getDefault() === '\'\'';
+    }
+
     public function getColumnName(): string
     {
         return $this->columnName;
