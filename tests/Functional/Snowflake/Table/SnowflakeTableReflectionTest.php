@@ -652,12 +652,12 @@ class SnowflakeTableReflectionTest extends SnowflakeBaseCase
     public function testDetectVirtualColumn(): void
     {
         $this->createSchema(self::TEST_SCHEMA);
-        $this->connection->executeQuery(
-            <<<SQL
+        $this->connection->executeQuery(sprintf(
+            <<<'SQL'
 CREATE OR REPLACE TABLE CAR_SALES
     (
      SRC variant,
-     DEALER VARCHAR(134217728) AS (src:dealership::string)
+     DEALER VARCHAR(%d) AS (src:dealership::string)
 )
 AS
 SELECT PARSE_JSON(column1) AS src
@@ -665,7 +665,8 @@ FROM VALUES
          ('{"date":"2017-04-28","dealership":"Valley View Auto Sales"}'),
          ('{"date":"2017-04-28","dealership":"Tindel Toyota"}') v;
 SQL,
-        );
+            Snowflake::MAX_VARCHAR_LENGTH,
+        ));
 
         $ref = new SnowflakeTableReflection($this->connection, self::TEST_SCHEMA, 'CAR_SALES');
 
