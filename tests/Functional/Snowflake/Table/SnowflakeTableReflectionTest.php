@@ -657,7 +657,7 @@ class SnowflakeTableReflectionTest extends SnowflakeBaseCase
 CREATE OR REPLACE TABLE CAR_SALES
     (
      SRC variant,
-     DEALER VARCHAR(255) AS (src:dealership::string)
+     DEALER VARCHAR(134217728) AS (src:dealership::string)
 )
 AS
 SELECT PARSE_JSON(column1) AS src
@@ -679,7 +679,10 @@ SQL,
                 ],
             'DEALER' => [
                 'type' => Snowflake::TYPE_VARCHAR,
-                'length' => '255',
+                // Snowflake raised the max VARCHAR length to 128 MB (BCR 2025_03); a VARIANT field
+                // cast with ::string now infers VARCHAR(MAX_VARCHAR_LENGTH), and the virtual column's
+                // declared type must match the inferred expression type.
+                'length' => (string) Snowflake::MAX_VARCHAR_LENGTH,
                 'nullable' => true,
             ],
         ];
