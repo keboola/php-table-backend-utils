@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+// CI baseline experiment (DMD-1685): force this suite to run on ODBC 3.10.0 — DO NOT MERGE.
+
 namespace Tests\Keboola\TableBackendUtils\Functional\Snowflake\Table;
 
 use Generator;
