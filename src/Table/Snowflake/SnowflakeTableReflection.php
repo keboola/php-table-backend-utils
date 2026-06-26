@@ -203,7 +203,9 @@ final class SnowflakeTableReflection implements TableReflectionInterface
      */
     public function getLastChangeMarker(): ?string
     {
-        $this->cacheTableProps(true);
+        // No force needed: LAST_ALTERED is already fetched by any cacheTableProps() call,
+        // so if the cache is warm (e.g. from a prior getTableStats()) we avoid a second query.
+        $this->cacheTableProps();
         return $this->lastAltered;
     }
 
