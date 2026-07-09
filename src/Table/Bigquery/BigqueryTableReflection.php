@@ -115,6 +115,22 @@ class BigqueryTableReflection implements TableReflectionInterface
         return new TableStats((int) $numBytes, $this->getRowsCount());
     }
 
+    /**
+     * Opaque marker of the table's last modification, taken from the BigQuery table
+     * metadata `lastModifiedTime` (epoch millis, updated on any DML). Compared for
+     * equality only, never parsed. Returns null when not reported. See DMD-1598.
+     */
+    public function getLastChangeMarker(): ?string
+    {
+        $this->throwIfNotExists();
+        $lastModifiedTime = $this->getTableInfo()['lastModifiedTime'] ?? null;
+        if ($lastModifiedTime === null) {
+            return null;
+        }
+        /** @var int|string $lastModifiedTime */
+        return (string) $lastModifiedTime;
+    }
+
     public function isTemporary(): bool
     {
         return $this->isTemporary;

@@ -44,6 +44,8 @@ final class SnowflakeTableReflection implements TableReflectionInterface
 
     private ?string $description = null;
 
+    private ?string $lastAltered = null;
+
     public function __construct(Connection $connection, string $schemaName, string $tableName)
     {
         $this->tableName = $tableName;
@@ -59,11 +61,11 @@ final class SnowflakeTableReflection implements TableReflectionInterface
         if ($force === false && $this->isTemporary !== null) {
             return;
         }
-        /** @var array<array{TABLE_TYPE:string,BYTES:string,ROW_COUNT:string,COMMENT:string|null}> $row */
+        /** @var array<array{TABLE_TYPE:string,BYTES:string,ROW_COUNT:string,COMMENT:string|null,LAST_ALTERED:string|null}> $row */
         $row = $this->connection->fetchAllAssociative(
             sprintf(
             //phpcs:ignore
-                'SELECT TABLE_TYPE,BYTES,ROW_COUNT,COMMENT FROM information_schema.tables WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s;',
+                'SELECT TABLE_TYPE,BYTES,ROW_COUNT,COMMENT,LAST_ALTERED FROM information_schema.tables WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s;',
                 SnowflakeQuote::quote($this->schemaName),
                 SnowflakeQuote::quote($this->tableName),
             ),
@@ -74,6 +76,7 @@ final class SnowflakeTableReflection implements TableReflectionInterface
         $this->sizeBytes = (int) $row[0]['BYTES'];
         $this->rowCount = (int) $row[0]['ROW_COUNT'];
         $this->description = $row[0]['COMMENT'] === '' ? null : $row[0]['COMMENT'];
+        $this->lastAltered = $row[0]['LAST_ALTERED'] === '' ? null : $row[0]['LAST_ALTERED'];
 
         switch (strtoupper($row[0]['TABLE_TYPE'])) {
             case 'BASE TABLE':
@@ -188,6 +191,22 @@ final class SnowflakeTableReflection implements TableReflectionInterface
         assert($this->sizeBytes !== null);
         assert($this->rowCount !== null);
         return new TableStats($this->sizeBytes, $this->rowCount);
+    }
+
+    /**
+     * Opaque marker (INFORMATION_SCHEMA.TABLES.LAST_ALTERED) that advances whenever the
+     * table is changed by DML — including value-only updates that leave row count and size
+     * unchanged. Compared for equality only, never parsed. Returns null when not reported.
+     * See DMD-1598.
+     *
+     * @throws TableNotExistsReflectionException
+     */
+    public function getLastChangeMarker(): ?string
+    {
+        // No force needed: LAST_ALTERED is already fetched by any cacheTableProps() call,
+        // so if the cache is warm (e.g. from a prior getTableStats()) we avoid a second query.
+        $this->cacheTableProps();
+        return $this->lastAltered;
     }
 
     /**
