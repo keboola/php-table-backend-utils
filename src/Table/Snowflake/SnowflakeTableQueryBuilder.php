@@ -107,6 +107,8 @@ class SnowflakeTableQueryBuilder implements TableQueryBuilderInterface
 
     public function getAddColumnCommand(string $schemaName, string $tableName, SnowflakeColumn $column): string
     {
+        $this->assertTableName($tableName);
+
         /** @var Snowflake $columnDefinition */
         $columnDefinition = $column->getColumnDefinition();
 

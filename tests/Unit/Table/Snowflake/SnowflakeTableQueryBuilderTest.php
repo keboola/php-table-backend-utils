@@ -440,4 +440,14 @@ SQL,
             $sql,
         );
     }
+
+    public function testGetAddColumnCommandWithInvalidTableName(): void
+    {
+        $this->expectException(QueryBuilderException::class);
+        $this->expectExceptionMessage(
+            'Invalid table name testTab.: Only alphanumeric characters, dash,'
+                . ' underscores and dollar signs are allowed.',
+        );
+        $this->qb->getAddColumnCommand('testDb', 'testTab.', SnowflakeColumn::createGenericColumn('note'));
+    }
 }
