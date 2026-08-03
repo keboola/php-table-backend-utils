@@ -105,6 +105,31 @@ class SnowflakeTableQueryBuilder implements TableQueryBuilderInterface
         );
     }
 
+    public function getAddColumnCommand(string $schemaName, string $tableName, SnowflakeColumn $column): string
+    {
+        /** @var Snowflake $columnDefinition */
+        $columnDefinition = $column->getColumnDefinition();
+
+        $columnSql = sprintf(
+            '%s %s',
+            SnowflakeQuote::quoteSingleIdentifier($column->getColumnName()),
+            $columnDefinition->getSQLDefinition(),
+        );
+        if ($columnDefinition->getDescription() !== null) {
+            $columnSql .= sprintf(
+                ' COMMENT %s',
+                SnowflakeQuote::quote(self::truncateDescription($columnDefinition->getDescription())),
+            );
+        }
+
+        return sprintf(
+            'ALTER TABLE %s.%s ADD COLUMN %s',
+            SnowflakeQuote::quoteSingleIdentifier($schemaName),
+            SnowflakeQuote::quoteSingleIdentifier($tableName),
+            $columnSql,
+        );
+    }
+
     /**
      * @inheritDoc
      */

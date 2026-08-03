@@ -371,4 +371,73 @@ SQL,
             'Cannot change type of column "testColumn" from "VARCHAR" to "NUMBER"',
         ];
     }
+
+    public function testGetAddColumnCommand(): void
+    {
+        $sql = $this->qb->getAddColumnCommand(
+            'in.c-main',
+            'orders',
+            new SnowflakeColumn('amount', new Snowflake('NUMBER', [
+                'length' => '10,2',
+                'nullable' => false,
+                'default' => '0',
+            ])),
+        );
+
+        self::assertSame(
+            'ALTER TABLE "in.c-main"."orders" ADD COLUMN "amount" NUMBER (10,2) NOT NULL DEFAULT 0',
+            $sql,
+        );
+    }
+
+    public function testGetAddColumnCommandForGenericColumn(): void
+    {
+        $sql = $this->qb->getAddColumnCommand(
+            'in.c-main',
+            'orders',
+            SnowflakeColumn::createGenericColumn('note'),
+        );
+
+        self::assertSame(
+            'ALTER TABLE "in.c-main"."orders" ADD COLUMN "note" VARCHAR NOT NULL DEFAULT \'\'',
+            $sql,
+        );
+    }
+
+    public function testGetAddColumnCommandWithDescription(): void
+    {
+        $sql = $this->qb->getAddColumnCommand(
+            'in.c-main',
+            'orders',
+            new SnowflakeColumn('note', new Snowflake('VARCHAR', [
+                'length' => '255',
+                'nullable' => true,
+                'description' => "Customer's note",
+            ])),
+        );
+
+        self::assertSame(
+            'ALTER TABLE "in.c-main"."orders" ADD COLUMN "note" VARCHAR (255) COMMENT \'Customer\\\'s note\'',
+            $sql,
+        );
+    }
+
+    public function testGetAddColumnCommandTruncatesDescriptionToSnowflakeCommentLimit(): void
+    {
+        $description = str_repeat('x', SnowflakeTableQueryBuilder::COLUMN_COMMENT_MAX_LENGTH + 10);
+
+        $sql = $this->qb->getAddColumnCommand(
+            'in.c-main',
+            'orders',
+            new SnowflakeColumn('note', new Snowflake('VARCHAR', [
+                'nullable' => true,
+                'description' => $description,
+            ])),
+        );
+
+        self::assertStringContainsString(
+            sprintf('COMMENT \'%s\'', str_repeat('x', SnowflakeTableQueryBuilder::COLUMN_COMMENT_MAX_LENGTH)),
+            $sql,
+        );
+    }
 }
