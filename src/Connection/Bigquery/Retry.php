@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Keboola\TableBackendUtils\Connection\Bigquery;
 
 use Closure;
-use GuzzleHttp\Exception\RequestException;
+use GuzzleHttp\Exception\BadResponseException;
 use JsonException;
 use Psr\Log\LoggerInterface;
 use Psr\Log\LogLevel;
@@ -66,8 +66,9 @@ final class Retry
             }
 
             $message = $ex->getMessage();
-            if ($ex instanceof RequestException && $ex->hasResponse()) {
-                $message = (string) $ex->getResponse()?->getBody();
+            // BadResponseException is the only Guzzle exception guaranteed to carry a response in both Guzzle 7 and 8
+            if ($ex instanceof BadResponseException) {
+                $message = (string) $ex->getResponse()->getBody();
             }
             if (str_contains($message, self::RETRY_SERVICE_ACCOUNT_NOT_EXIST)) {
                 Retry::logRetry($statusCode, [$message], $logger);

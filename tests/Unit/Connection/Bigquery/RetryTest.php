@@ -6,7 +6,7 @@ namespace Tests\Keboola\TableBackendUtils\Unit\Connection\Bigquery;
 
 use Exception;
 use Generator;
-use GuzzleHttp\Exception\RequestException;
+use GuzzleHttp\Exception\BadResponseException;
 use GuzzleHttp\Psr7\Utils;
 use Keboola\TableBackendUtils\Connection\Bigquery\Retry;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -27,7 +27,7 @@ class RetryTest extends TestCase
     {
         $response = $this->createStub(ResponseInterface::class);
         $response->method('getBody')->willReturn(Utils::streamFor($message));
-        return new RequestException(
+        return new BadResponseException(
             '',
             $this->createStub(RequestInterface::class),
             $response,
