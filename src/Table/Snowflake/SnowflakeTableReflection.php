@@ -194,6 +194,22 @@ final class SnowflakeTableReflection implements TableReflectionInterface
     }
 
     /**
+     * Stats out of the props this reflection reads anyway for table type, description and last
+     * change marker, so a caller that already reads those pays no extra round-trip. Use
+     * {@see getTableStats()} when the numbers have to reflect DML issued through this very
+     * instance after the props were read.
+     *
+     * @throws TableNotExistsReflectionException
+     */
+    public function getTableStatsFromProps(): TableStatsInterface
+    {
+        $this->cacheTableProps();
+        assert($this->sizeBytes !== null);
+        assert($this->rowCount !== null);
+        return new TableStats($this->sizeBytes, $this->rowCount);
+    }
+
+    /**
      * Opaque marker (INFORMATION_SCHEMA.TABLES.LAST_ALTERED) that advances whenever the
      * table is changed by DML — including value-only updates that leave row count and size
      * unchanged. Compared for equality only, never parsed. Returns null when not reported.
