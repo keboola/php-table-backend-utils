@@ -100,6 +100,27 @@ class SnowflakeTableReflectionPropsTest extends TestCase
         self::assertCount(1, $this->informationSchemaQueries($queries));
     }
 
+    public function testRowWithoutShowTablesColumnsFallsBackToInformationSchema(): void
+    {
+        $queries = [];
+        $connection = $this->createConnectionStub($queries, [
+            ['name' => 'orders', 'TABLE_TYPE' => 'BASE TABLE', 'ROW_COUNT' => '3'],
+        ], [
+            [
+                'TABLE_TYPE' => 'BASE TABLE',
+                'BYTES' => '1024',
+                'ROW_COUNT' => '3',
+                'COMMENT' => '',
+                'LAST_ALTERED' => '2026-08-03 10:00:00.000',
+            ],
+        ]);
+
+        $ref = new SnowflakeTableReflection($connection, 'in.c-main', 'orders');
+
+        self::assertSame(3, $ref->getRowsCount());
+        self::assertCount(1, $this->informationSchemaQueries($queries));
+    }
+
     public function testMissingSchemaMakesShowTablesFailAndStillReportsMissingTable(): void
     {
         $queries = [];
