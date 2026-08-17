@@ -46,6 +46,8 @@ final class SnowflakeTableReflection implements TableReflectionInterface
 
     private ?string $lastAltered = null;
 
+    private bool $lastAlteredLoaded = false;
+
     public function __construct(Connection $connection, string $schemaName, string $tableName)
     {
         $this->tableName = $tableName;
@@ -61,6 +63,69 @@ final class SnowflakeTableReflection implements TableReflectionInterface
         if ($force === false && $this->isTemporary !== null) {
             return;
         }
+
+        if ($this->loadTablePropsFromShowTables()) {
+            return;
+        }
+
+        $this->loadTablePropsFromInformationSchema();
+    }
+
+    /**
+     * Table props off the metadata layer, which is orders of magnitude cheaper than
+     * INFORMATION_SCHEMA and only needs USAGE on the schema. Reports whether the table was found:
+     * SHOW TABLES lists no views, and it errors out instead of returning nothing when the schema
+     * is gone, so anything but a hit falls back to INFORMATION_SCHEMA.
+     *
+     * LAST_ALTERED is not part of the output and is left for {@see getLastChangeMarker()} to read.
+     */
+    private function loadTablePropsFromShowTables(): bool
+    {
+        try {
+            /** @var array<array{name:string,kind:string,comment:string|null,rows:string|null,bytes:string|null,is_external:string|null}> $rows */
+            $rows = $this->connection->fetchAllAssociative(
+                sprintf(
+                    'SHOW TABLES LIKE %s IN SCHEMA %s',
+                    SnowflakeQuote::quote($this->tableName),
+                    SnowflakeQuote::quoteSingleIdentifier($this->schemaName),
+                ),
+            );
+        } catch (Throwable) {
+            return false;
+        }
+
+        // LIKE matches case-insensitively and treats % and _ as wildcards, so the exact name has
+        // to be picked out of the result.
+        $row = null;
+        foreach ($rows as $candidate) {
+            if ($candidate['name'] === $this->tableName) {
+                $row = $candidate;
+                break;
+            }
+        }
+        if ($row === null) {
+            return false;
+        }
+
+        $this->sizeBytes = (int) $row['bytes'];
+        $this->rowCount = (int) $row['rows'];
+        $this->description = ($row['comment'] ?? '') === '' ? null : $row['comment'];
+        $this->lastAltered = null;
+        $this->lastAlteredLoaded = false;
+        // TRANSIENT tables are permanent objects and INFORMATION_SCHEMA reports them as BASE TABLE.
+        $this->isTemporary = strtoupper($row['kind']) === 'TEMPORARY';
+        $this->tableType = ($row['is_external'] ?? 'N') === 'Y'
+            ? TableType::SNOWFLAKE_EXTERNAL
+            : TableType::TABLE;
+
+        return true;
+    }
+
+    /**
+     * @throws TableNotExistsReflectionException
+     */
+    private function loadTablePropsFromInformationSchema(): void
+    {
         /** @var array<array{TABLE_TYPE:string,BYTES:string,ROW_COUNT:string,COMMENT:string|null,LAST_ALTERED:string|null}> $row */
         $row = $this->connection->fetchAllAssociative(
             sprintf(
@@ -77,6 +142,7 @@ final class SnowflakeTableReflection implements TableReflectionInterface
         $this->rowCount = (int) $row[0]['ROW_COUNT'];
         $this->description = $row[0]['COMMENT'] === '' ? null : $row[0]['COMMENT'];
         $this->lastAltered = $row[0]['LAST_ALTERED'] === '' ? null : $row[0]['LAST_ALTERED'];
+        $this->lastAlteredLoaded = true;
 
         switch (strtoupper($row[0]['TABLE_TYPE'])) {
             case 'BASE TABLE':
@@ -219,9 +285,12 @@ final class SnowflakeTableReflection implements TableReflectionInterface
      */
     public function getLastChangeMarker(): ?string
     {
-        // No force needed: LAST_ALTERED is already fetched by any cacheTableProps() call,
-        // so if the cache is warm (e.g. from a prior getTableStats()) we avoid a second query.
-        $this->cacheTableProps();
+        // LAST_ALTERED is the one prop the metadata layer does not report, so this is the only
+        // caller that pays for an INFORMATION_SCHEMA read.
+        if ($this->lastAlteredLoaded === false) {
+            $this->loadTablePropsFromInformationSchema();
+        }
+
         return $this->lastAltered;
     }
 
