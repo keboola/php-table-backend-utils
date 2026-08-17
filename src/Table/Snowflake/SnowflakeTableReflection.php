@@ -82,7 +82,7 @@ final class SnowflakeTableReflection implements TableReflectionInterface
     private function loadTablePropsFromShowTables(): bool
     {
         try {
-            /** @var array<array{name:string,kind:string,comment:string|null,rows:string|null,bytes:string|null,is_external:string|null}> $rows */
+            /** @var array<array<string, mixed>> $rows */
             $rows = $this->connection->fetchAllAssociative(
                 sprintf(
                     'SHOW TABLES LIKE %s IN SCHEMA %s',
@@ -95,25 +95,35 @@ final class SnowflakeTableReflection implements TableReflectionInterface
         }
 
         // LIKE matches case-insensitively and treats % and _ as wildcards, so the exact name has
-        // to be picked out of the result.
+        // to be picked out of the result. A row that does not carry the columns SHOW TABLES is
+        // documented to return counts as no answer, leaving INFORMATION_SCHEMA to decide.
         $row = null;
         foreach ($rows as $candidate) {
-            if ($candidate['name'] === $this->tableName) {
-                $row = $candidate;
-                break;
+            if (($candidate['name'] ?? null) !== $this->tableName) {
+                continue;
             }
+            if (!is_string($candidate['kind'] ?? null)) {
+                return false;
+            }
+            $row = $candidate;
+            break;
         }
         if ($row === null) {
             return false;
         }
 
-        $this->sizeBytes = (int) $row['bytes'];
-        $this->rowCount = (int) $row['rows'];
-        $this->description = ($row['comment'] ?? '') === '' ? null : $row['comment'];
+        // External tables report no rows and no bytes, which reads as zero the same way
+        // INFORMATION_SCHEMA's NULLs did.
+        $bytes = $row['bytes'] ?? null;
+        $rows = $row['rows'] ?? null;
+        $comment = $row['comment'] ?? '';
+        $this->sizeBytes = is_numeric($bytes) ? (int) $bytes : 0;
+        $this->rowCount = is_numeric($rows) ? (int) $rows : 0;
+        $this->description = is_string($comment) && $comment !== '' ? $comment : null;
         $this->lastAltered = null;
         $this->lastAlteredLoaded = false;
         // TRANSIENT tables are permanent objects and INFORMATION_SCHEMA reports them as BASE TABLE.
-        $this->isTemporary = strtoupper($row['kind']) === 'TEMPORARY';
+        $this->isTemporary = strtoupper((string) $row['kind']) === 'TEMPORARY';
         $this->tableType = ($row['is_external'] ?? 'N') === 'Y'
             ? TableType::SNOWFLAKE_EXTERNAL
             : TableType::TABLE;
