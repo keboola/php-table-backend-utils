@@ -98,8 +98,9 @@ final class SnowflakeTableReflection implements TableReflectionInterface
         }
 
         // LIKE matches case-insensitively and treats % and _ as wildcards, so the exact name has
-        // to be picked out of the result. A row that does not carry the columns SHOW TABLES is
-        // documented to return counts as no answer, leaving INFORMATION_SCHEMA to decide.
+        // to be picked out of the result. A matching row without a string `kind` is not the output
+        // SHOW TABLES is documented to return, so it counts as no answer and INFORMATION_SCHEMA
+        // decides instead; `rows` and `bytes` are read defensively below and never force that.
         $row = null;
         foreach ($rows as $candidate) {
             if (($candidate['name'] ?? null) !== $this->tableName) {
