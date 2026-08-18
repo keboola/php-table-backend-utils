@@ -115,10 +115,10 @@ final class SnowflakeTableReflection implements TableReflectionInterface
         // External tables report no rows and no bytes, which reads as zero the same way
         // INFORMATION_SCHEMA's NULLs did.
         $bytes = $row['bytes'] ?? null;
-        $rows = $row['rows'] ?? null;
+        $rowsCount = $row['rows'] ?? null;
         $comment = $row['comment'] ?? '';
         $this->sizeBytes = is_numeric($bytes) ? (int) $bytes : 0;
-        $this->rowCount = is_numeric($rows) ? (int) $rows : 0;
+        $this->rowCount = is_numeric($rowsCount) ? (int) $rowsCount : 0;
         $this->description = is_string($comment) && $comment !== '' ? $comment : null;
         $this->lastAltered = null;
         $this->lastAlteredLoaded = false;
