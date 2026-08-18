@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Keboola\TableBackendUtils\Table\Snowflake;
 
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\Exception as DbalException;
 use Keboola\TableBackendUtils\Column\ColumnCollection;
 use Keboola\TableBackendUtils\Column\Snowflake\SnowflakeColumn;
 use Keboola\TableBackendUtils\Escaping\Snowflake\SnowflakeQuote;
@@ -90,7 +91,9 @@ final class SnowflakeTableReflection implements TableReflectionInterface
                     SnowflakeQuote::quoteSingleIdentifier($this->schemaName),
                 ),
             );
-        } catch (Throwable) {
+        } catch (DbalException) {
+            // A failed probe stays visible as a failed SHOW TABLES in QUERY_HISTORY, which is where
+            // the INFORMATION_SCHEMA fallback rate is measured.
             return false;
         }
 
