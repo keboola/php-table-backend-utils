@@ -81,6 +81,18 @@ class SnowflakeTableReflectionPropsTest extends TestCase
         self::assertSame(0, $ref->getRowsCount());
     }
 
+    public function testExternalFlagIsMatchedCaseInsensitively(): void
+    {
+        $queries = [];
+        $connection = $this->createConnectionStub($queries, [
+            $this->showTablesRow(name: 'external', rows: null, bytes: null, isExternal: 'y'),
+        ]);
+
+        $ref = new SnowflakeTableReflection($connection, 'in.c-main', 'external');
+
+        self::assertSame(TableType::SNOWFLAKE_EXTERNAL, $ref->getTableDefinition()->getTableType());
+    }
+
     public function testViewFallsBackToInformationSchema(): void
     {
         $queries = [];
