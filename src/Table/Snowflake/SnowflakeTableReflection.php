@@ -127,7 +127,11 @@ final class SnowflakeTableReflection implements TableReflectionInterface
         $this->lastAlteredLoaded = false;
         // TRANSIENT tables are permanent objects and INFORMATION_SCHEMA reports them as BASE TABLE.
         $this->isTemporary = strtoupper((string) $row['kind']) === 'TEMPORARY';
-        $this->tableType = strtoupper((string) ($row['is_external'] ?? 'N')) === 'Y'
+        // The flag is normalized rather than compared to 'Y' as-is: a casing or wording difference
+        // would silently report an external table as a normal one.
+        $isExternal = $row['is_external'] ?? 'N';
+        $this->tableType = $isExternal === true
+            || (is_string($isExternal) && str_starts_with(strtoupper($isExternal), 'Y'))
             ? TableType::SNOWFLAKE_EXTERNAL
             : TableType::TABLE;
 
