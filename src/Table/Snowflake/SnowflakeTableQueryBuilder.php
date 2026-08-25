@@ -316,14 +316,14 @@ class SnowflakeTableQueryBuilder implements TableQueryBuilderInterface
     }
 
     /**
-     * @param array<string, array{
+     * @param array<array-key, array{
      *     existing: Snowflake,
      *     desired: Snowflake,
      *     updateDefault?: bool,
      *     updateNullable?: bool,
      *     updateDataType?: bool,
      *     updateDescription?: bool,
-     * }> $columns
+     * }> $columns keyed by column name; a purely numeric name is an int key
      */
     public function getUpdateColumnsFromDefinitionsQuery(
         string $schemaName,
@@ -339,6 +339,7 @@ class SnowflakeTableQueryBuilder implements TableQueryBuilderInterface
 
         $sqlParts = [];
         foreach ($columns as $columnName => $column) {
+            $columnName = (string) $columnName;
             foreach ($this->getUpdateColumnDefinitionSqlParts(
                 $column['existing'],
                 $column['desired'],

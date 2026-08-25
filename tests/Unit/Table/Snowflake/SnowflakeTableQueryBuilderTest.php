@@ -234,6 +234,34 @@ SQL,
         );
     }
 
+    public function testGetColumnsDefinitionsUpdateAcceptsNumericColumnName(): void
+    {
+        $sql = $this->qb->getUpdateColumnsFromDefinitionsQuery(
+            'testDb',
+            'testTable',
+            [
+                // PHP turns a numeric column name into an int array key
+                '2024' => [
+                    'existing' => new Snowflake('VARCHAR', [
+                        'length' => '255',
+                        'nullable' => true,
+                    ]),
+                    'desired' => new Snowflake('VARCHAR', [
+                        'length' => '255',
+                        'nullable' => true,
+                        'description' => 'Revenue for 2024',
+                    ]),
+                    'updateDescription' => true,
+                ],
+            ],
+        );
+
+        self::assertSame(
+            'ALTER TABLE "testDb"."testTable" MODIFY COLUMN "2024" COMMENT \'Revenue for 2024\'',
+            $sql,
+        );
+    }
+
     public function testGetColumnsDefinitionsUpdateRequiresColumns(): void
     {
         $this->expectException(QueryBuilderException::class);
