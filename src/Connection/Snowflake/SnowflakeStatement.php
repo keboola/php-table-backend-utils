@@ -22,8 +22,8 @@ class SnowflakeStatement implements Statement
 
     private RetryProxy $retry;
 
-    /** @var resource */
-    private $stmt;
+    /** @var resource|null */
+    private $stmt = null;
 
     /** @var array<mixed> */
     private array $params = [];
@@ -59,7 +59,6 @@ class SnowflakeStatement implements Statement
         }
         $this->dbh = $dbh;
         $this->query = $query;
-        $this->stmt = $this->prepare();
     }
 
     /**
@@ -110,13 +109,9 @@ class SnowflakeStatement implements Statement
 
         try {
             $this->retry->call(function (): void {
-                $result = odbc_execute(
-                    $this->stmt,
-                    $this->repairBinding($this->params),
-                );
-                if ($result === false) {
-                    throw DriverException::newFromHandle($this->dbh);
-                }
+                $this->stmt = $this->params === []
+                    ? $this->executeDirect()
+                    : $this->prepareAndExecute();
             });
         } catch (Throwable $e) {
             if ($e instanceof DriverException) {
@@ -125,7 +120,33 @@ class SnowflakeStatement implements Statement
             throw DriverException::newFromHandle($this->dbh);
         }
 
+        assert($this->stmt !== null);
         return new Result($this->stmt);
+    }
+
+    /**
+     * @return resource
+     */
+    private function executeDirect()
+    {
+        /** @var resource|false $stmt */
+        $stmt = @odbc_exec($this->dbh, $this->query);
+        if (!$stmt) {
+            throw DriverException::newFromHandle($this->dbh);
+        }
+        return $stmt;
+    }
+
+    /**
+     * @return resource
+     */
+    private function prepareAndExecute()
+    {
+        $stmt = $this->prepare();
+        if (odbc_execute($stmt, $this->repairBinding($this->params)) === false) {
+            throw DriverException::newFromHandle($this->dbh);
+        }
+        return $stmt;
     }
 
     /**
