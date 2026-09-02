@@ -24,6 +24,21 @@ final class Retry
     private const ALWAYS_RETRY_STATUS_CODES = [429, 500, 503];
 
     /**
+     * How many times a 401 may be retried when $includeUnauthorized is on.
+     *
+     * The caller's own retry budget (20 for the BigQuery client) is meant for throttling and backend
+     * errors, which do clear. A 401 either clears within seconds — a spurious one, or a key that has
+     * not finished propagating — or never, because the credential is genuinely invalid or revoked.
+     * Spending the full budget on the second case turns a permanent failure into a very long hang:
+     * cloud-core's delay is `min(2^attempt + jitter, 60s)`, so 20 attempts is roughly 14 minutes per
+     * call, and a caller that loops (a smoke test, a poll) multiplies that into hours.
+     *
+     * Six retries is ~63s of tolerance (1+2+4+8+16+32), which covers the propagation window this
+     * feature exists for while bounding the hopeless case to about a minute.
+     */
+    private const MAX_UNAUTHORIZED_RETRIES = 6;
+
+    /**
      * helper method to overcome some irregular behavior of google bigquery client
      */
     public static function getRestRetryFunction(LoggerInterface $logger, bool $includeUnauthorized = false): Closure
@@ -34,9 +49,13 @@ final class Retry
             $argsNum = func_num_args();
             if ($argsNum === 2) {
                 $ex = func_get_arg(0);
+                $retryAttempt = func_get_arg(1);
                 if ($ex instanceof Throwable) {
                     /** @var bool */
-                    return Retry::getRetryDecider($logger, $includeUnauthorized)($ex);
+                    return Retry::getRetryDecider($logger, $includeUnauthorized)(
+                        $ex,
+                        is_int($retryAttempt) ? $retryAttempt : 0,
+                    );
                 }
             }
             return Retry::getRetryDecider($logger, $includeUnauthorized);
@@ -44,20 +63,35 @@ final class Retry
     }
 
     /**
-     * @param bool $includeUnauthorized default false, google cloud sometimes returns 401 even when credentials are
-     *     correct, but it is bit tricky since in case of invalid credentials for real, it could cause long waiting
-     *     loop
+     * The returned closure takes `($exception, $retryAttempt)`, which is how google/cloud-core calls a
+     * retry function from both ExponentialBackoff and its async path. `$retryAttempt` is zero-based and
+     * defaults to 0, so a caller that passes only the exception keeps its previous behaviour.
+     *
+     * @param bool $includeUnauthorized default false. Google Cloud sometimes returns 401 even when the
+     *     credentials are correct, so retrying helps — but for credentials that are invalid for real it
+     *     used to mean a long waiting loop, which is why the 401 retry is now capped at
+     *     {@see self::MAX_UNAUTHORIZED_RETRIES}. Everything else keeps the caller's full budget.
      */
     public static function getRetryDecider(LoggerInterface $logger, bool $includeUnauthorized = false): Closure
     {
-        return static function (Throwable $ex) use ($logger, $includeUnauthorized): bool {
+        return static function (Throwable $ex, int $retryAttempt = 0) use ($logger, $includeUnauthorized): bool {
             $statusCode = $ex->getCode();
 
-            $retryOnStatusCodes = self::ALWAYS_RETRY_STATUS_CODES;
-            if ($includeUnauthorized) {
-                $retryOnStatusCodes[] = 401;
+            if ($includeUnauthorized && $statusCode === 401) {
+                if ($retryAttempt < self::MAX_UNAUTHORIZED_RETRIES) {
+                    Retry::logRetry($statusCode, [], $logger);
+                    return true;
+                }
+
+                Retry::logNotRetry(
+                    $statusCode,
+                    sprintf('giving up after %d unauthorized retries', self::MAX_UNAUTHORIZED_RETRIES),
+                    $logger,
+                );
+                return false;
             }
-            if (in_array($statusCode, $retryOnStatusCodes)) {
+
+            if (in_array($statusCode, self::ALWAYS_RETRY_STATUS_CODES)) {
                 Retry::logRetry($statusCode, [], $logger);
                 return true;
             }
