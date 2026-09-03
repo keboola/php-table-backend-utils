@@ -75,10 +75,16 @@ class BigQueryClientWrapper extends BigQueryClient
     }
 
     /**
-     * @param array<mixed> $options
+     * @param array<mixed> $options `maxWaitSeconds` bounds the wait for the job to finish; without
+     *  it the wait is bounded by the remaining PHP execution time.
      */
     public function runJob(JobConfigurationInterface $config, array $options = []): Job
     {
+        $maxWaitSeconds = $options['maxWaitSeconds'] ?? null;
+        assert($maxWaitSeconds === null || (is_int($maxWaitSeconds) && $maxWaitSeconds > 0));
+        // not an API field, it must not reach the job insert request
+        unset($options['maxWaitSeconds']);
+
         $options += [
             'retryCount' => 5,
             'backOffPolicy' => new ExponentialRandomBackOffPolicy(10, 1.8, 300),
@@ -110,11 +116,8 @@ class BigQueryClientWrapper extends BigQueryClient
             }
         }
         assert($job instanceof Job);
-        $context = $this->backOffPolicy->start();
-        do {
-            $this->backOffPolicy->backOff($context);
-            $job->reload();
-        } while (!$job->isComplete());
+        (new JobWaiter($this->backOffPolicy, $this->logger))
+            ->wait($job, JobWaitDeadline::resolve($maxWaitSeconds));
 
         return $job;
     }
