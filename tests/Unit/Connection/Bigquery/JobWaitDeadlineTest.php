@@ -11,8 +11,7 @@ class JobWaitDeadlineTest extends TestCase
 {
     private string $originalExecutionTime;
 
-    /** @var mixed */
-    private $originalRequestTime;
+    private mixed $originalRequestTime;
 
     protected function setUp(): void
     {

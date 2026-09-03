@@ -6,8 +6,8 @@ namespace Tests\Keboola\TableBackendUtils\Unit\Connection\Bigquery;
 
 use Google\Cloud\BigQuery\Job;
 use Keboola\TableBackendUtils\Connection\Bigquery\BigQueryJobTimeoutException;
-use Keboola\TableBackendUtils\Connection\Bigquery\JobWaiter;
 use Keboola\TableBackendUtils\Connection\Bigquery\JobWaitDeadline;
+use Keboola\TableBackendUtils\Connection\Bigquery\JobWaiter;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
