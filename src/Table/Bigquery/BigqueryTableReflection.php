@@ -17,6 +17,7 @@ use Keboola\TableBackendUtils\Table\TableStats;
 use Keboola\TableBackendUtils\Table\TableStatsInterface;
 use Keboola\TableBackendUtils\Table\TableType;
 use Keboola\TableBackendUtils\TableNotExistsReflectionException;
+use Keboola\TableBackendUtils\TableWithoutColumnsReflectionException;
 use LogicException;
 
 /**
@@ -52,16 +53,33 @@ class BigqueryTableReflection implements TableReflectionInterface
         return $this->table->info();
     }
 
+    /**
+     * A table with no columns carries no `schema.fields` at all, so reading the key blindly turns
+     * into a PHP warning. Such a table has no representation as a ColumnCollection either — the
+     * caller has to decide what to do with it.
+     *
+     * @return non-empty-array<BigqueryTableFieldSchema>
+     * @throws TableWithoutColumnsReflectionException
+     */
+    private function getSchemaFields(): array
+    {
+        $schema = $this->getTableInfo()['schema'] ?? null;
+        $fields = is_array($schema) ? ($schema['fields'] ?? null) : null;
+        if (!is_array($fields) || $fields === []) {
+            throw TableWithoutColumnsReflectionException::createForTable($this->tableName);
+        }
+
+        /** @var non-empty-array<BigqueryTableFieldSchema> $fields */
+        return $fields;
+    }
+
     /** @return  string[] */
     public function getColumnsNames(): array
     {
         $this->throwIfNotExists();
 
         $columns = [];
-        $info = $this->getTableInfo();
-        /** @var array{fields: array<BigqueryTableFieldSchema>} $schema */
-        $schema = $info['schema'];
-        foreach ($schema['fields'] as $row) {
+        foreach ($this->getSchemaFields() as $row) {
             $columns[] = $row['name'];
         }
         return $columns;
@@ -71,10 +89,7 @@ class BigqueryTableReflection implements TableReflectionInterface
     {
         $this->throwIfNotExists();
         $columns = [];
-        $info = $this->getTableInfo();
-        /** @var array{fields: array<BigqueryTableFieldSchema>} $schema */
-        $schema = $info['schema'];
-        foreach ($schema['fields'] as $row) {
+        foreach ($this->getSchemaFields() as $row) {
             $columns[] = BigqueryColumn::createFromDB($row);
         }
 
