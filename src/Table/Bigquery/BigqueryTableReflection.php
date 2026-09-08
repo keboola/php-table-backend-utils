@@ -73,7 +73,11 @@ class BigqueryTableReflection implements TableReflectionInterface
         return $fields;
     }
 
-    /** @return  string[] */
+    /**
+     * @return  string[]
+     * @throws TableNotExistsReflectionException
+     * @throws TableWithoutColumnsReflectionException
+     */
     public function getColumnsNames(): array
     {
         $this->throwIfNotExists();
@@ -85,6 +89,10 @@ class BigqueryTableReflection implements TableReflectionInterface
         return $columns;
     }
 
+    /**
+     * @throws TableNotExistsReflectionException
+     * @throws TableWithoutColumnsReflectionException
+     */
     public function getColumnsDefinitions(): ColumnCollection
     {
         $this->throwIfNotExists();
