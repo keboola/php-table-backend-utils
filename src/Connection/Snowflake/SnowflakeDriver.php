@@ -71,7 +71,7 @@ class SnowflakeDriver implements Driver
     {
         $privateKeyResource = openssl_pkey_get_private($privateKey);
         if (!$privateKeyResource) {
-            throw new PrivateKeyStringIsNotValid();
+            throw PrivateKeyStringIsNotValid::fromOpenSslError();
         }
 
         $pemPKCS8 = '';
