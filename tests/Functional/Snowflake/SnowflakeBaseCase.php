@@ -7,6 +7,7 @@ namespace Tests\Keboola\TableBackendUtils\Functional\Snowflake;
 use Doctrine\DBAL\Connection;
 use Generator;
 use Keboola\TableBackendUtils\Connection\Snowflake\SnowflakeConnectionFactory;
+use Keboola\TableBackendUtils\Connection\Snowflake\SnowflakePrivateKey;
 use Keboola\TableBackendUtils\Escaping\Snowflake\SnowflakeQuote;
 use PHPUnit\Framework\TestCase;
 
@@ -21,32 +22,8 @@ class SnowflakeBaseCase extends TestCase
 
     public static function connectionProvider(): Generator
     {
-        yield 'password connection' => [
-            SnowflakeConnectionFactory::getConnection(
-                (string) getenv('SNOWFLAKE_HOST'),
-                (string) getenv('SNOWFLAKE_USER'),
-                (string) getenv('SNOWFLAKE_PASSWORD'),
-                [
-                    'port' => (string) getenv('SNOWFLAKE_PORT'),
-                    'warehouse' => (string) getenv('SNOWFLAKE_WAREHOUSE'),
-                    'database' => (string) getenv('SNOWFLAKE_DATABASE'),
-                    'runId' => 'runIdValue',
-                ],
-            ),
-        ];
-
         yield 'cert connection' => [
-            SnowflakeConnectionFactory::getConnectionWithCert(
-                (string) getenv('SNOWFLAKE_HOST'),
-                (string) getenv('SNOWFLAKE_USER'),
-                self::normalizePrivateKey((string) getenv('SNOWFLAKE_PRIVATE_KEY')),
-                [
-                    'port' => (string) getenv('SNOWFLAKE_PORT'),
-                    'warehouse' => (string) getenv('SNOWFLAKE_WAREHOUSE'),
-                    'database' => (string) getenv('SNOWFLAKE_DATABASE'),
-                    'runId' => 'runIdValue',
-                ],
-            ),
+            self::createConnection(['runId' => 'runIdValue']),
         ];
     }
 
@@ -58,24 +35,32 @@ class SnowflakeBaseCase extends TestCase
 
     private function getConnection(): Connection
     {
-        return SnowflakeConnectionFactory::getConnection(
-            (string) getenv('SNOWFLAKE_HOST'),
-            (string) getenv('SNOWFLAKE_USER'),
-            (string) getenv('SNOWFLAKE_PASSWORD'),
-            [
-                'port' => (string) getenv('SNOWFLAKE_PORT'),
-                'warehouse' => (string) getenv('SNOWFLAKE_WAREHOUSE'),
-                'database' => (string) getenv('SNOWFLAKE_DATABASE'),
-            ],
-        );
+        return self::createConnection();
     }
 
-    private static function normalizePrivateKey(string $privateKey): string
+    /**
+     * @param array{
+     *     'database'?:string,
+     *     'schema'?:string,
+     *     'runId'?:string,
+     *     'queryTags'?:array<string, string>
+     * } $params
+     */
+    protected static function createConnection(array $params = []): Connection
     {
-        $privateKey = trim($privateKey);
-        $privateKey = str_replace(["\r", "\n"], '', $privateKey);
-        $privateKey = wordwrap($privateKey, 64, "\n", true);
-        return "-----BEGIN PRIVATE KEY-----\n" . $privateKey . "\n-----END PRIVATE KEY-----\n";
+        return SnowflakeConnectionFactory::getConnectionWithCert(
+            (string) getenv('SNOWFLAKE_HOST'),
+            (string) getenv('SNOWFLAKE_USER'),
+            SnowflakePrivateKey::normalize((string) getenv('SNOWFLAKE_PRIVATE_KEY')),
+            array_merge(
+                [
+                    'port' => (string) getenv('SNOWFLAKE_PORT'),
+                    'warehouse' => (string) getenv('SNOWFLAKE_WAREHOUSE'),
+                    'database' => (string) getenv('SNOWFLAKE_DATABASE'),
+                ],
+                $params,
+            ),
+        );
     }
 
     protected function initTable(
