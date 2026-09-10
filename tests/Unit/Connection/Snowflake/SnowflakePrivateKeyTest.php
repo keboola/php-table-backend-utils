@@ -13,6 +13,9 @@ class SnowflakePrivateKeyTest extends TestCase
     private const BODY = 'MIIBOgIBAAJBAKj34GkxFhD90vcNLYLInFEX6Ppy1tPf9Cnzj4p4WGeKLs1Pt8Qu'
         . 'KUpRKfFLfRYC9AIKjbJTWit+CqvjWYzvQwECAwEAAQ==';
 
+    /**
+     * @return iterable<string, array{string}>
+     */
     public static function keyProvider(): iterable
     {
         yield 'single line body' => [self::BODY];
