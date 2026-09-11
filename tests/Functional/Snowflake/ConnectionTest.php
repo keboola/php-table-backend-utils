@@ -289,16 +289,7 @@ class ConnectionTest extends SnowflakeBaseCase
 
     public function testInvalidAccessToDatabase(): void
     {
-        $connection = SnowflakeConnectionFactory::getConnection(
-            (string) getenv('SNOWFLAKE_HOST'), // @phpstan-ignore cast.string
-            (string) getenv('SNOWFLAKE_USER'), // @phpstan-ignore cast.string
-            (string) getenv('SNOWFLAKE_PASSWORD'), // @phpstan-ignore cast.string
-            [
-                'port' => (string) getenv('SNOWFLAKE_PORT'), // @phpstan-ignore cast.string
-                'warehouse' => (string) getenv('SNOWFLAKE_WAREHOUSE'), // @phpstan-ignore cast.string
-                'database' => 'invalidDatabase',
-            ],
-        );
+        $connection = self::createConnection(['database' => 'invalidDatabase']);
 
         $this->assertConnectionIsWorking($connection);
         $this->assertNull($connection->fetchOne('SELECT CURRENT_DATABASE()'));
@@ -352,21 +343,13 @@ SQL,);
 
     public function testQueryTaggingWithQueryTags(): void
     {
-        $connection = SnowflakeConnectionFactory::getConnection(
-            (string) getenv('SNOWFLAKE_HOST'), // @phpstan-ignore cast.string
-            (string) getenv('SNOWFLAKE_USER'), // @phpstan-ignore cast.string
-            (string) getenv('SNOWFLAKE_PASSWORD'), // @phpstan-ignore cast.string
-            [
-                'port' => (string) getenv('SNOWFLAKE_PORT'), // @phpstan-ignore cast.string
-                'warehouse' => (string) getenv('SNOWFLAKE_WAREHOUSE'), // @phpstan-ignore cast.string
-                'database' => (string) getenv('SNOWFLAKE_DATABASE'), // @phpstan-ignore cast.string
-                'runId' => 'runIdValue',
-                'queryTags' => [
-                    'keboola_branch_id' => 'branch-123',
-                    'keboola_service' => 'sapi',
-                ],
+        $connection = self::createConnection([
+            'runId' => 'runIdValue',
+            'queryTags' => [
+                'keboola_branch_id' => 'branch-123',
+                'keboola_service' => 'sapi',
             ],
-        );
+        ]);
 
         $connection->executeQuery('SELECT current_date;');
         $queries = $connection->fetchAllAssociative(<<<SQL
@@ -387,20 +370,12 @@ SQL,);
 
     public function testQueryTaggingRunIdTakesPrecedence(): void
     {
-        $connection = SnowflakeConnectionFactory::getConnection(
-            (string) getenv('SNOWFLAKE_HOST'), // @phpstan-ignore cast.string
-            (string) getenv('SNOWFLAKE_USER'), // @phpstan-ignore cast.string
-            (string) getenv('SNOWFLAKE_PASSWORD'), // @phpstan-ignore cast.string
-            [
-                'port' => (string) getenv('SNOWFLAKE_PORT'), // @phpstan-ignore cast.string
-                'warehouse' => (string) getenv('SNOWFLAKE_WAREHOUSE'), // @phpstan-ignore cast.string
-                'database' => (string) getenv('SNOWFLAKE_DATABASE'), // @phpstan-ignore cast.string
-                'runId' => 'correctRunId',
-                'queryTags' => [
-                    'runId' => 'overriddenRunId',
-                ],
+        $connection = self::createConnection([
+            'runId' => 'correctRunId',
+            'queryTags' => [
+                'runId' => 'overriddenRunId',
             ],
-        );
+        ]);
 
         $connection->executeQuery('SELECT current_date;');
         $queries = $connection->fetchAllAssociative(<<<SQL
@@ -445,17 +420,7 @@ SQL,);
         $connection->close();
 
         $this->connection->executeStatement('CREATE SCHEMA IF NOT EXISTS "tableUtils-testSchema"');
-        $connection = SnowflakeConnectionFactory::getConnection(
-            (string) getenv('SNOWFLAKE_HOST'), // @phpstan-ignore cast.string
-            (string) getenv('SNOWFLAKE_USER'), // @phpstan-ignore cast.string
-            (string) getenv('SNOWFLAKE_PASSWORD'), // @phpstan-ignore cast.string
-            [
-                'port' => (string) getenv('SNOWFLAKE_PORT'), // @phpstan-ignore cast.string
-                'warehouse' => (string) getenv('SNOWFLAKE_WAREHOUSE'), // @phpstan-ignore cast.string
-                'database' => (string) getenv('SNOWFLAKE_DATABASE'), // @phpstan-ignore cast.string
-                'schema' => 'tableUtils-testSchema',
-            ],
-        );
+        $connection = self::createConnection(['schema' => 'tableUtils-testSchema']);
         //tests if you set schema in constructor it really set in connection
         $this->assertSame(
             'tableUtils-testSchema',

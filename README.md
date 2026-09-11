@@ -163,6 +163,9 @@ AWS_SECRET_ACCESS_KEY=
 
 Prepare credentials for Snowflake access
 
+The tests authenticate with a key pair only, so the user is created as `TYPE = SERVICE` and
+never gets a password.
+
 ```sql
 CREATE ROLE "KEBOOLA_CI_TABLE_UTILS";
 CREATE DATABASE "KEBOOLA_CI_TABLE_UTILS";
@@ -171,7 +174,7 @@ GRANT ALL PRIVILEGES ON DATABASE "KEBOOLA_CI_TABLE_UTILS" TO ROLE "KEBOOLA_CI_TA
 GRANT USAGE ON WAREHOUSE "DEV" TO ROLE "KEBOOLA_CI_TABLE_UTILS";
 
 CREATE USER "KEBOOLA_CI_TABLE_UTILS"
-PASSWORD = 'my_secret_password'
+TYPE = SERVICE
 DEFAULT_ROLE = "KEBOOLA_CI_TABLE_UTILS";
 
 GRANT ROLE "KEBOOLA_CI_TABLE_UTILS" TO USER "KEBOOLA_CI_TABLE_UTILS";
@@ -183,13 +186,13 @@ set up env variables:
 SNOWFLAKE_HOST=
 SNOWFLAKE_PORT=443
 SNOWFLAKE_USER=KEBOOLA_CI_TABLE_UTILS
-SNOWFLAKE_PASSWORD='my_secret_password
+SNOWFLAKE_PRIVATE_KEY=<base64 key body, see below>
 SNOWFLAKE_DATABASE=KEBOOLA_CI_TABLE_UTILS
 SNOWFLAKE_WAREHOUSE=
 ```
 
 ##### Setup snowflake Key-pair authentication
-For the new key-pair authentication, which will be the only preferred method going forward, please follow these steps:
+Key-pair is the only authentication the Snowflake tests support:
 1. Open a terminal window and generate a private key and a public key using the following command:
 ```bash
 openssl genrsa 2048 | openssl pkcs8 -topk8 -inform PEM -out rsa_key.p8 -nocrypt

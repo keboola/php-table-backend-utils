@@ -159,7 +159,7 @@ class SnowflakeDSNGeneratorTest extends TestCase
         SnowflakeDSNGenerator::generateDSN([
             'host' => getenv('SNOWFLAKE_HOST'),
             'user' => getenv('SNOWFLAKE_USER'),
-            'password' => getenv('SNOWFLAKE_PASSWORD'),
+            'password' => 'pass',
             'someRandomParameter' => false,
             'otherRandomParameter' => false,
             'value',
@@ -173,7 +173,7 @@ class SnowflakeDSNGeneratorTest extends TestCase
 
         // @phpstan-ignore-next-line
         SnowflakeDSNGenerator::generateDSN([
-            'password' => getenv('SNOWFLAKE_PASSWORD'),
+            'password' => 'pass',
             ],);
     }
 
