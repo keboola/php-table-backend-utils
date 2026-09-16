@@ -58,10 +58,14 @@ class BigqueryTableReflection implements TableReflectionInterface
      * into a PHP warning. Such a table has no representation as a ColumnCollection either — the
      * caller has to decide what to do with it.
      *
+     * Public because the converted column definitions are a lossy view of this payload: a policy tag
+     * lives only on the raw REST field and has no representation in a datatype, so a caller that
+     * needs one has to read the schema itself.
+     *
      * @return non-empty-array<BigqueryTableFieldSchema>
      * @throws TableWithoutColumnsReflectionException
      */
-    private function getSchemaFields(): array
+    public function getSchemaFields(): array
     {
         $schema = $this->getTableInfo()['schema'] ?? null;
         $fields = is_array($schema) ? ($schema['fields'] ?? null) : null;
