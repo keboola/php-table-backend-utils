@@ -10,6 +10,7 @@ use Doctrine\DBAL\ParameterType;
 use Exception;
 use JsonException;
 use Keboola\TableBackendUtils\Connection\Exception\DriverException;
+use Keboola\TableBackendUtils\Connection\Exception\OdbcErrorMessage;
 use Keboola\TableBackendUtils\Escaping\Snowflake\SnowflakeQuote;
 use Throwable;
 
@@ -31,7 +32,7 @@ class SnowflakeConnection implements Connection
             $handle = odbc_connect($dsn, $user, $password);
             if ($handle === false) {
                 $code = odbc_error() ?: '0';
-                $message = odbc_errormsg() ?: 'ODBC connection failed';
+                $message = OdbcErrorMessage::sanitize(odbc_errormsg() ?: 'ODBC connection failed');
                 throw DriverException::newConnectionFailure($message, (int) $code, null);
             }
             $this->conn = $handle;

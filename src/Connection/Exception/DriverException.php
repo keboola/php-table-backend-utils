@@ -17,7 +17,7 @@ class DriverException extends AbstractException
     {
         $errorCode = odbc_error($resource);
         assert($errorCode !== false); // @phpstan-ignore function.alreadyNarrowedType, notIdentical.alwaysTrue
-        $errorMsg = odbc_errormsg($resource);
+        $errorMsg = OdbcErrorMessage::sanitize(odbc_errormsg($resource));
 
         return new self($errorMsg, null, (int) $errorCode);
     }
