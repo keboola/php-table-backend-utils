@@ -45,6 +45,15 @@ class OdbcErrorMessageTest extends TestCase
             "String 'a\xC3(b' is too long",
             "String 'a?(b' is too long",
         ];
+
+        // A wholly-invalid short fragment (e.g. a lone multibyte lead byte) has no valid
+        // remainder to keep, so it sanitizes down to an empty string. Callers that need a
+        // non-empty message (see SnowflakeConnection's connection-failure fallback) must apply
+        // their own fallback AFTER calling sanitize(), not before.
+        yield 'wholly invalid short fragment sanitizes to an empty string' => [
+            "\xC3",
+            '',
+        ];
     }
 
     #[DataProvider('messageProvider')]

@@ -32,7 +32,10 @@ class SnowflakeConnection implements Connection
             $handle = odbc_connect($dsn, $user, $password);
             if ($handle === false) {
                 $code = odbc_error() ?: '0';
-                $message = OdbcErrorMessage::sanitize(odbc_errormsg() ?: 'ODBC connection failed');
+                // apply the fallback AFTER sanitizing: a short truthy but wholly-invalid
+                // odbc_errormsg() (e.g. a lone lead byte) sanitizes down to '', which the '?:'
+                // ordering before sanitize() would miss.
+                $message = OdbcErrorMessage::sanitize(odbc_errormsg()) ?: 'ODBC connection failed';
                 throw DriverException::newConnectionFailure($message, (int) $code, null);
             }
             $this->conn = $handle;
