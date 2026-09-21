@@ -150,7 +150,7 @@ class SnowflakeConnection implements Connection
     {
         return [
             'code' => odbc_error($this->conn),
-            'message' => odbc_errormsg($this->conn),
+            'message' => OdbcErrorMessage::sanitize(odbc_errormsg($this->conn)),
         ];
     }
 
