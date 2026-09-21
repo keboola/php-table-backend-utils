@@ -9,6 +9,9 @@ final class OdbcErrorMessage
     // A UTF-8 character is at most 4 bytes, so a byte cut can leave at most 3 dangling bytes.
     private const MAX_DANGLING_BYTES = 3;
 
+    // mb_substitute_character() takes a Unicode codepoint, not a literal character.
+    private const SUBSTITUTE_CHARACTER_CODEPOINT = 0x3F; // '?'
+
     /**
      * PHP's ODBC extension keeps the diagnostic in a fixed 512-byte buffer and cuts it by bytes,
      * so a long backend message can end inside a multibyte character. Such a string is not valid
@@ -30,8 +33,16 @@ final class OdbcErrorMessage
             }
         }
 
-        // Invalid bytes elsewhere: keep the message readable rather than lose it.
-        return mb_scrub($message, 'UTF-8');
+        // Invalid bytes elsewhere: keep the message readable rather than lose it. mb_scrub()'s
+        // replacement character follows the mbstring.substitute_character ini setting, which we
+        // don't control in every deployment, so pin it explicitly for a deterministic result.
+        $previousSubstitute = mb_substitute_character();
+        mb_substitute_character(self::SUBSTITUTE_CHARACTER_CODEPOINT);
+        try {
+            return mb_scrub($message, 'UTF-8');
+        } finally {
+            mb_substitute_character($previousSubstitute);
+        }
     }
 
     private static function isValidUtf8(string $value): bool
