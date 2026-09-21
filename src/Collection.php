@@ -27,7 +27,7 @@ class Collection implements IteratorAggregate, Countable
     }
 
     /**
-     * @return Generator<Item>
+     * @return Generator<int, Item>
      */
     public function getIterator(): Generator
     {
