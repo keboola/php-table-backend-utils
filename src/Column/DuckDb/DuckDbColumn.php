@@ -64,6 +64,7 @@ final class DuckDbColumn implements ColumnInterface
             $type = trim($matches['type']);
             $length = $matches['length'];
         }
+        $type = DuckDb::DESCRIBED_TYPE_SPELLINGS[strtoupper($type)] ?? $type;
 
         return new self($dbResponse['column_name'], new DuckDb($type, [
             'nullable' => strtoupper($dbResponse['null']) === 'YES',
