@@ -38,7 +38,10 @@ class SnowflakeStatement implements Statement
         if ($retry === null) {
             $this->retry = new RetryProxy(
                 new CallableRetryPolicy(
-                    function (Throwable $e): bool {
+                    // static: a closure bound to $this would close a reference cycle through
+                    // $this->retry, keeping the ODBC result and its column buffers (up to the
+                    // declared VARCHAR size each) alive until the cycle collector runs
+                    static function (Throwable $e): bool {
                         if (str_contains($e->getMessage(), 'SYSTEM$ALLOWLIST')) {
                             // Retry in case of SYSTEM$ALLOWLIST error #prod_24_7___inc_25140
                             // this is usually accompanied with SNFLK incidents
