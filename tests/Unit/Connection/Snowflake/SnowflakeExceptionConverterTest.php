@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Keboola\TableBackendUtils\Unit\Connection\Snowflake;
 
+use Doctrine\DBAL\Exception\DriverException as DoctrineDriverException;
 use Doctrine\DBAL\Query;
 use Generator;
 use Keboola\TableBackendUtils\Connection\Exception\ConnectionException;
@@ -48,6 +49,30 @@ class SnowflakeExceptionConverterTest extends TestCase
             'CALL system$wait(5)',
         ];
 
+        yield 'Statement timeout without thousands separator' => [
+            WarehouseTimeoutReached::class,
+            'An exception occurred while executing a query: Query reached its timeout 3600 second(s)',
+            'Statement reached its statement or warehouse timeout of 3600 second(s) and was canceled.',
+            57014,
+            'CALL system$wait(3601)',
+        ];
+
+        yield 'Statement timeout with thousands separator' => [
+            WarehouseTimeoutReached::class,
+            'An exception occurred while executing a query: Query reached its timeout 3600 second(s)',
+            'Statement reached its statement or warehouse timeout of 3,600 second(s) and was canceled.',
+            57014,
+            'CALL system$wait(3601)',
+        ];
+
+        yield 'Statement timeout with multiple thousands separators' => [
+            WarehouseTimeoutReached::class,
+            'An exception occurred while executing a query: Query reached its timeout 1234567 second(s)',
+            'Statement reached its statement or warehouse timeout of 1,234,567 second(s) and was canceled.',
+            57014,
+            'CALL system$wait(1234568)',
+        ];
+
         yield 'Cannot access object' => [
             CannotAccessObjectException::class,
             // phpcs:ignore
@@ -81,7 +106,31 @@ class SnowflakeExceptionConverterTest extends TestCase
 
         $converter = new SnowflakeExceptionConverter();
         $convertedException = $converter->convert($exceptionThrown, $query);
-        $this->assertInstanceOf($expectedException, $convertedException);
+        $this->assertSame($expectedException, $convertedException::class);
         $this->assertSame($expectedExceptionMessage, $convertedException->getMessage());
+    }
+
+    public function testOtherCancellationIsNotAStatementTimeout(): void
+    {
+        $converter = new SnowflakeExceptionConverter();
+        $exception = new DriverException('SQL execution canceled by user.', null, 57014);
+
+        $convertedException = $converter->convert($exception, null);
+
+        $this->assertSame(DoctrineDriverException::class, $convertedException::class);
+    }
+
+    public function testStatementTimeoutTextWithDifferentCodeIsNotAStatementTimeout(): void
+    {
+        $converter = new SnowflakeExceptionConverter();
+        $exception = new DriverException(
+            'Statement reached its statement or warehouse timeout of 3,600 second(s) and was canceled.',
+            null,
+            0,
+        );
+
+        $convertedException = $converter->convert($exception, null);
+
+        $this->assertSame(DoctrineDriverException::class, $convertedException::class);
     }
 }

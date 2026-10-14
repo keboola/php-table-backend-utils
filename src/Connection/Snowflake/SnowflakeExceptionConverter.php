@@ -70,15 +70,14 @@ class SnowflakeExceptionConverter implements ExceptionConverter
             );
         }
 
-        $pattern = '/Statement reached its statement or warehouse timeout of ([0-9]+) second.*/';
+        $pattern = '/Statement reached its statement or warehouse timeout of ([0-9]+(?:,[0-9]{3})*) second.*/';
         $matches = null;
         if ($exception->getCode() === self::CODE_CANCELED && preg_match($pattern, $exception->getMessage(), $matches)) {
-            array_shift($matches); // remove the whole string from matches
             return new WarehouseTimeoutReached(
                 new SnowflakeDriverException(
-                    vsprintf(
+                    sprintf(
                         'Query reached its timeout %d second(s)',
-                        $matches,
+                        (int) str_replace(',', '', $matches[1]),
                     ),
                     null,
                     $exception->getCode(),
