@@ -86,7 +86,7 @@ final class SnowflakeSchemaReflection implements SchemaReflectionInterface
     public function getDefinitions(): array
     {
         $informationsQuery = sprintf(
-            'SELECT TABLE_NAME, TABLE_TYPE, BYTES, ROW_COUNT '.
+            'SELECT TABLE_NAME, TABLE_TYPE, BYTES, ROW_COUNT, COMMENT '.
             'FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = %s ORDER BY TABLE_NAME;',
             SnowflakeQuote::quote($this->schemaName),
         );
@@ -120,7 +120,8 @@ SELECT
         ELSE DATA_TYPE
     END AS "type",
     COLUMN_DEFAULT AS "default",
-    IS_NULLABLE AS "null?"
+    IS_NULLABLE AS "null?",
+    COALESCE(COMMENT, '') AS "comment"
 FROM INFORMATION_SCHEMA.COLUMNS
 WHERE table_schema = %s
 ORDER BY TABLE_NAME, ORDINAL_POSITION;
@@ -136,7 +137,12 @@ SQL,
             SnowflakeQuote::quoteSingleIdentifier($this->schemaName),
         );
 
-        /** @var array<int, array{TABLE_NAME: string, TABLE_TYPE: string, BYTES: int, ROW_COUNT: int}> $informations */
+        /** @var array<int, array{
+         *     TABLE_NAME: string,
+         *     TABLE_TYPE: string,
+         *     BYTES: int,
+         *     ROW_COUNT: int,
+         *     COMMENT: string|null}> $informations */
         $informations = $this->connection->fetchAllAssociative($informationsQuery);
 
         // short-circuit > no tables no need to continue
@@ -144,7 +150,13 @@ SQL,
             return [];
         }
 
-        /** @var array<int, array{TABLE_NAME: string, name: string, type: string, default: string, null?: string}> $columns */
+        /** @var array<int, array{
+         *     TABLE_NAME: string,
+         *     name: string,
+         *     type: string,
+         *     default: string,
+         *     null?: string,
+         *     comment: string}> $columns */
         $columns = $this->connection->fetchAllAssociative($columnsQuery);
         /** @var array<int, array{
          *     created_on: string,
@@ -229,6 +241,7 @@ SQL,
                 throw new ReflectionException(sprintf('Malformed table definition: %s', json_encode($table)));
             }
             $tableName = $table['PROPS']['TABLE_NAME'];
+            $tableComment = $table['PROPS']['COMMENT'];
             $definitions[$tableName] = new SnowflakeTableDefinition(
                 $this->schemaName,
                 $tableName,
@@ -236,6 +249,7 @@ SQL,
                 new ColumnCollection($table['COLUMNS'] ?? []),
                 $table['PRIMARY_KEYS'] ?? [],
                 $table['PROPS']['TABLE_TYPE'],
+                $tableComment === null || $tableComment === '' ? null : $tableComment,
             );
         }
         return $definitions;
