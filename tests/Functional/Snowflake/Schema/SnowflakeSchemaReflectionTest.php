@@ -175,7 +175,9 @@ CREATE VIEW %s.%s AS
         $this->createSchema(self::TEST_SCHEMA);
         $schema = SnowflakeQuote::quoteSingleIdentifier(self::TEST_SCHEMA);
         $this->connection->executeQuery(sprintf(
-            'CREATE TABLE %s.%s (%s INTEGER COMMENT %s, %s VARCHAR(100), %s VARCHAR(100) COMMENT %s, %s BINARY COMMENT %s) COMMENT = %s',
+            'CREATE TABLE %s.%s (' .
+            '%s INTEGER COMMENT %s, %s VARCHAR(100), %s VARCHAR(100) COMMENT %s, %s BINARY COMMENT %s' .
+            ') COMMENT = %s',
             $schema,
             SnowflakeQuote::quoteSingleIdentifier('commented_table'),
             SnowflakeQuote::quoteSingleIdentifier('id'),
