@@ -9,6 +9,7 @@ use Keboola\TableBackendUtils\Column\Snowflake\SnowflakeColumn;
 use Keboola\TableBackendUtils\Escaping\Snowflake\SnowflakeQuote;
 use Keboola\TableBackendUtils\Schema\Snowflake\SnowflakeSchemaReflection;
 use Keboola\TableBackendUtils\Table\Snowflake\SnowflakeTableDefinition;
+use Keboola\TableBackendUtils\Table\TableType;
 use RuntimeException;
 use Tests\Keboola\TableBackendUtils\Functional\Snowflake\SnowflakeBaseCase;
 use function PHPUnit\Framework\assertEquals;
@@ -167,6 +168,95 @@ CREATE VIEW %s.%s AS
         $definitions = $this->schemaRef->getDefinitions();
 
         self::assertCount(0, $definitions);
+    }
+
+    public function testGetDefinitionsReadsTableAndColumnComments(): void
+    {
+        $this->createSchema(self::TEST_SCHEMA);
+        $schema = SnowflakeQuote::quoteSingleIdentifier(self::TEST_SCHEMA);
+        $this->connection->executeQuery(sprintf(
+            'CREATE TABLE %s.%s (%s INTEGER COMMENT %s, %s VARCHAR(100), %s VARCHAR(100) COMMENT %s, %s BINARY COMMENT %s) COMMENT = %s',
+            $schema,
+            SnowflakeQuote::quoteSingleIdentifier('commented_table'),
+            SnowflakeQuote::quoteSingleIdentifier('id'),
+            SnowflakeQuote::quote('Customer identifier'),
+            SnowflakeQuote::quoteSingleIdentifier('name'),
+            SnowflakeQuote::quoteSingleIdentifier('empty_comment'),
+            SnowflakeQuote::quote(''),
+            SnowflakeQuote::quoteSingleIdentifier('payload'),
+            SnowflakeQuote::quote('Raw payload'),
+            SnowflakeQuote::quote('Curated customer table'),
+        ));
+        $this->connection->executeQuery(sprintf(
+            'CREATE TABLE %s.%s (%s INTEGER)',
+            $schema,
+            SnowflakeQuote::quoteSingleIdentifier('uncommented_table'),
+            SnowflakeQuote::quoteSingleIdentifier('id'),
+        ));
+        $this->connection->executeQuery(sprintf(
+            'CREATE TABLE %s.%s (%s INTEGER) COMMENT = %s',
+            $schema,
+            SnowflakeQuote::quoteSingleIdentifier('empty_comment_table'),
+            SnowflakeQuote::quoteSingleIdentifier('id'),
+            SnowflakeQuote::quote(''),
+        ));
+        $special = "O'Brien – naïve 名前";
+        $this->connection->executeQuery(sprintf(
+            'CREATE TABLE %s.%s (%s INTEGER COMMENT %s) COMMENT = %s',
+            $schema,
+            SnowflakeQuote::quoteSingleIdentifier('special_comment_table'),
+            SnowflakeQuote::quoteSingleIdentifier('id'),
+            SnowflakeQuote::quote($special),
+            SnowflakeQuote::quote($special),
+        ));
+
+        $definitions = $this->schemaRef->getDefinitions();
+
+        self::assertSame('Curated customer table', $definitions['commented_table']->getDescription());
+        /** @var array<string, SnowflakeColumn> $columns */
+        $columns = [];
+        foreach ($definitions['commented_table']->getColumnsDefinitions() as $column) {
+            $columns[$column->getColumnName()] = $column;
+        }
+        self::assertSame('Customer identifier', $columns['id']->getDescription());
+        self::assertNull($columns['name']->getDescription());
+        self::assertNull($columns['empty_comment']->getDescription());
+        self::assertSame('Raw payload', $columns['payload']->getDescription());
+
+        self::assertNull($definitions['uncommented_table']->getDescription());
+        $columns = [];
+        foreach ($definitions['uncommented_table']->getColumnsDefinitions() as $column) {
+            $columns[$column->getColumnName()] = $column;
+        }
+        self::assertNull($columns['id']->getDescription());
+        self::assertNull($definitions['empty_comment_table']->getDescription());
+
+        self::assertSame($special, $definitions['special_comment_table']->getDescription());
+        $columns = [];
+        foreach ($definitions['special_comment_table']->getColumnsDefinitions() as $column) {
+            $columns[$column->getColumnName()] = $column;
+        }
+        self::assertSame($special, $columns['id']->getDescription());
+    }
+
+    public function testGetDefinitionsReadsViewComment(): void
+    {
+        $this->initTable();
+        $schema = SnowflakeQuote::quoteSingleIdentifier(self::TEST_SCHEMA);
+        $this->connection->executeQuery(sprintf(
+            'CREATE VIEW %s.%s COMMENT = %s AS SELECT %s FROM %s.%s',
+            $schema,
+            SnowflakeQuote::quoteSingleIdentifier(self::VIEW_GENERIC),
+            SnowflakeQuote::quote('Customer view'),
+            SnowflakeQuote::quoteSingleIdentifier('id'),
+            $schema,
+            SnowflakeQuote::quoteSingleIdentifier(self::TABLE_GENERIC),
+        ));
+
+        $definitions = $this->schemaRef->getDefinitions();
+        self::assertSame('Customer view', $definitions[self::VIEW_GENERIC]->getDescription());
+        self::assertSame(TableType::VIEW, $definitions[self::VIEW_GENERIC]->getTableType());
+        self::assertNull($definitions[self::TABLE_GENERIC]->getDescription());
     }
 
     public function testGetDefinitionsPrimaryKeysNotDuplicatedAcrossSchemas(): void
