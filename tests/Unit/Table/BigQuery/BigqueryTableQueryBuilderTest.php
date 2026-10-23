@@ -162,6 +162,34 @@ SQL;
         $this->assertSame($expectedSql, $sql);
     }
 
+    public function testCreateTableWithExpiration(): void
+    {
+        $columns = new ColumnCollection([
+            new BigqueryColumn(
+                'id',
+                new Bigquery(Bigquery::TYPE_INTEGER),
+            ),
+        ]);
+
+        $sql = $this->qb->getCreateTableCommand(
+            'mydataset',
+            'mytable',
+            $columns,
+            [],
+            72,
+        );
+
+        $expectedSql = <<<SQL
+CREATE TABLE `mydataset`.`mytable` 
+(
+`id` INTEGER
+)
+OPTIONS(expiration_timestamp=TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 72 HOUR));
+SQL;
+
+        $this->assertSame($expectedSql, $sql);
+    }
+
     public function testCreateTableWithCompositePrimaryKey(): void
     {
         $columns = new ColumnCollection([

@@ -75,6 +75,7 @@ class BigqueryTableQueryBuilder implements TableQueryBuilderInterface
         string $tableName,
         ColumnCollection $columns,
         array $primaryKeys = [],
+        ?int $expirationHours = null,
     ): string {
         $columnsSqlDefinitions = [];
         $columnNames = [];
@@ -119,16 +120,18 @@ class BigqueryTableQueryBuilder implements TableQueryBuilderInterface
             'CREATE TABLE %s.%s 
 (
 %s
-);',
+)%s;',
             BigqueryQuote::quoteSingleIdentifier($schemaName),
             BigqueryQuote::quoteSingleIdentifier($tableName),
             $columnsSql,
+            $expirationHours === null ? '' : "\n" . self::getExpirationOptionsSql($expirationHours),
         );
     }
 
     public function getCreateTableCommandFromDefinition(
         TableDefinitionInterface $definition,
         bool $definePrimaryKeys = self::CREATE_TABLE_WITHOUT_PRIMARY_KEYS,
+        ?int $expirationHours = null,
     ): string {
         assert($definition instanceof BigqueryTableDefinition);
         return $this->getCreateTableCommand(
@@ -138,6 +141,16 @@ class BigqueryTableQueryBuilder implements TableQueryBuilderInterface
             $definePrimaryKeys === self::CREATE_TABLE_WITH_PRIMARY_KEYS
                 ? $definition->getPrimaryKeysNames()
                 : [],
+            $expirationHours,
+        );
+    }
+
+    public static function getExpirationOptionsSql(int $expirationHours): string
+    {
+        assert($expirationHours > 0, 'Table expiration must be a positive number of hours.');
+        return sprintf(
+            'OPTIONS(expiration_timestamp=TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL %d HOUR))',
+            $expirationHours,
         );
     }
 
