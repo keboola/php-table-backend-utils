@@ -25,6 +25,13 @@ class SnowflakeStatement implements Statement
     /** @var resource|null */
     private $stmt = null;
 
+    /**
+     * Prepared once, reused by every parameterized execute().
+     *
+     * @var resource|null
+     */
+    private $preparedStmt = null;
+
     /** @var array<mixed> */
     private array $params = [];
 
@@ -145,7 +152,8 @@ class SnowflakeStatement implements Statement
      */
     private function prepareAndExecute()
     {
-        $stmt = $this->prepare();
+        $this->preparedStmt ??= $this->prepare();
+        $stmt = $this->preparedStmt;
         if (odbc_execute($stmt, $this->repairBinding($this->params)) === false) {
             throw DriverException::newFromHandle($this->dbh);
         }
