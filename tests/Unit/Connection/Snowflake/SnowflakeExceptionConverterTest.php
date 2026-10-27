@@ -81,6 +81,31 @@ class SnowflakeExceptionConverterTest extends TestCase
             2000,
             'USE SCHEMA "Other schema"',
         ];
+
+        yield 'ODBC 4 server error prefix is stripped' => [
+            DoctrineDriverException::class,
+            "An exception occurred while executing a query: Numeric value 'male' is not recognized",
+            "[Snowflake][Snowflake ODBC Driver][Snowflake]Numeric value 'male' is not recognized",
+            100038,
+            'COPY INTO "t" FROM @stage',
+        ];
+
+        yield 'ODBC 4 client error prefix is stripped' => [
+            DoctrineDriverException::class,
+            'An exception occurred while executing a query: No more data available',
+            '[Snowflake][Snowflake ODBC Driver]No more data available',
+            2000,
+            'SELECT 1',
+        ];
+
+        yield 'ODBC 4 prefixed string is too long' => [
+            StringTooLongException::class,
+            // phpcs:ignore
+            'An exception occurred while executing a query: String \'abc\' cannot be inserted because it\'s bigger than column size',
+            '[Snowflake][Snowflake ODBC Driver][Snowflake]String \'abc\' is too long and would be truncated',
+            22000,
+            'INSERT INTO "t" VALUES (\'abc\')',
+        ];
     }
 
     /**

@@ -20,8 +20,13 @@ class SnowflakeExceptionConverter implements ExceptionConverter
     private const CODE_CANCELED = 57014;
     private const CODE_STRING_TRUNCATE = 22000;
 
+    // ODBC 4.x prefixes every diagnostic with the vendor and component.
+    private const DRIVER_PREFIX_PATTERN = '/^\[Snowflake\]\[Snowflake ODBC Driver\](?:\[Snowflake\])?/';
+
     public function convert(Exception $exception, ?Query $query): DriverException
     {
+        $exception = $this->withoutDriverPrefix($exception);
+
         $pattern = '/Incorrect username or password was specified/';
         $matches = null;
         if (preg_match($pattern, $exception->getMessage(), $matches)) {
@@ -100,5 +105,14 @@ class SnowflakeExceptionConverter implements ExceptionConverter
         }
 
         return new DriverException($exception, $query);
+    }
+
+    private function withoutDriverPrefix(Exception $exception): Exception
+    {
+        $message = preg_replace(self::DRIVER_PREFIX_PATTERN, '', $exception->getMessage(), 1, $count);
+        if ($count === 0 || $message === null) {
+            return $exception;
+        }
+        return new SnowflakeDriverException($message, $exception->getSQLState(), $exception->getCode(), $exception);
     }
 }
