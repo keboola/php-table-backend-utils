@@ -7,6 +7,7 @@ namespace Tests\Keboola\TableBackendUtils\Functional\Snowflake;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception;
 use Doctrine\DBAL\Exception\DriverException;
+use ErrorException;
 use Keboola\TableBackendUtils\Connection\Snowflake\Exception\StringTooLongException;
 use Keboola\TableBackendUtils\Connection\Snowflake\Exception\WarehouseTimeoutReached;
 use Keboola\TableBackendUtils\Connection\Snowflake\SnowflakeConnection;
@@ -265,6 +266,41 @@ class ConnectionTest extends SnowflakeBaseCase
             1,
             'franta',
             $longString,
+        );
+    }
+
+    public function testParameterizedDmlMatchingNoRowsReportsZeroAffectedRows(): void
+    {
+        $this->initTable();
+        $this->insertRowToTable(self::TEST_SCHEMA, self::TABLE_GENERIC, 1, 'franta', 'omacka');
+        $table = sprintf(
+            '%s.%s',
+            SnowflakeQuote::quoteSingleIdentifier(self::TEST_SCHEMA),
+            SnowflakeQuote::quoteSingleIdentifier(self::TABLE_GENERIC),
+        );
+
+        // Applications turn warnings into exceptions; a zero-row DML must not raise one.
+        set_error_handler(static function (int $errno, string $errstr): never {
+            throw new ErrorException($errstr, 0, $errno);
+        });
+        try {
+            $deleted = $this->connection->executeStatement(
+                sprintf('DELETE FROM %s WHERE "id" = ?', $table),
+                [42],
+            );
+            $updated = $this->connection->executeStatement(
+                sprintf('UPDATE %s SET "first_name" = ? WHERE "id" = ?', $table),
+                ['pepa', 42],
+            );
+        } finally {
+            restore_error_handler();
+        }
+
+        $this->assertSame(0, $deleted);
+        $this->assertSame(0, $updated);
+        $this->assertSame(
+            [['id' => '1']],
+            $this->connection->fetchAllAssociative(sprintf('SELECT "id" FROM %s', $table)),
         );
     }
 
