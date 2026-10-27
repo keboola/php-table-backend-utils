@@ -154,10 +154,45 @@ class SnowflakeStatement implements Statement
     {
         $this->preparedStmt ??= $this->prepare();
         $stmt = $this->preparedStmt;
-        if (odbc_execute($stmt, $this->repairBinding($this->params)) === false) {
+        $bind = $this->repairBinding($this->params);
+        if ($this->ignoringNoDataWarning(static fn(): bool => odbc_execute($stmt, $bind)) === false) {
             throw DriverException::newFromHandle($this->dbh);
         }
         return $stmt;
+    }
+
+    /**
+     * ODBC 4.x returns SQL_NO_DATA for DML that affects no rows; odbc_execute() then
+     * succeeds but still raises an E_WARNING, which error handlers turn into an exception.
+     *
+     * @template T
+     * @param callable(): T $call
+     * @return T
+     */
+    private function ignoringNoDataWarning(callable $call): mixed
+    {
+        $previous = null;
+        $previous = set_error_handler(
+            static function (
+                int $errno,
+                string $errstr,
+                string $errfile = '',
+                int $errline = 0,
+            ) use (&$previous): bool {
+                if (str_ends_with($errstr, 'SQL state 02000 in SQLExecute')) {
+                    return true;
+                }
+                if ($previous === null) {
+                    return false;
+                }
+                return (bool) $previous($errno, $errstr, $errfile, $errline);
+            },
+        );
+        try {
+            return $call();
+        } finally {
+            restore_error_handler();
+        }
     }
 
     /**
