@@ -86,7 +86,9 @@ final class SnowflakeSchemaReflection implements SchemaReflectionInterface
     public function getDefinitions(): array
     {
         $informationsQuery = sprintf(
-            'SELECT TABLE_NAME, TABLE_TYPE, BYTES, ROW_COUNT, COMMENT '.
+            // 16383 UTF-8 characters fit within the 65535-byte Storage TEXT limit.
+            'SELECT TABLE_NAME, TABLE_TYPE, BYTES, ROW_COUNT, ' .
+            'IFF(CONTAINS(COMMENT, \'<\') OR CONTAINS(COMMENT, \'>\'), NULL, LEFT(COMMENT, 16383)) AS "COMMENT" ' .
             'FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = %s ORDER BY TABLE_NAME;',
             SnowflakeQuote::quote($this->schemaName),
         );
@@ -121,7 +123,7 @@ SELECT
     END AS "type",
     COLUMN_DEFAULT AS "default",
     IS_NULLABLE AS "null?",
-    COALESCE(COMMENT, '') AS "comment"
+    IFF(CONTAINS(COMMENT, '<') OR CONTAINS(COMMENT, '>'), '', COALESCE(LEFT(COMMENT, 16383), '')) AS "comment"
 FROM INFORMATION_SCHEMA.COLUMNS
 WHERE table_schema = %s
 ORDER BY TABLE_NAME, ORDINAL_POSITION;
