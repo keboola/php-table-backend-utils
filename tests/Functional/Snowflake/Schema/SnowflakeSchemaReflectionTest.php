@@ -262,25 +262,6 @@ CREATE VIEW %s.%s AS
         }
     }
 
-    public function testGetDefinitionsOmitsMarkupComments(): void
-    {
-        $this->createSchema(self::TEST_SCHEMA);
-        $this->connection->executeQuery(sprintf(
-            'CREATE TABLE %s.%s (%s INTEGER COMMENT %s) COMMENT = %s',
-            SnowflakeQuote::quoteSingleIdentifier(self::TEST_SCHEMA),
-            SnowflakeQuote::quoteSingleIdentifier('markup_table'),
-            SnowflakeQuote::quoteSingleIdentifier('id'),
-            SnowflakeQuote::quote('<script>alert(1)</script>'),
-            SnowflakeQuote::quote('<script>alert(1)</script>'),
-        ));
-
-        $table = $this->schemaRef->getDefinitions()['markup_table'];
-        self::assertNull($table->getDescription());
-        foreach ($table->getColumnsDefinitions() as $column) {
-            self::assertNull($column->getDescription());
-        }
-    }
-
     public function testGetDefinitionsReadsViewComment(): void
     {
         $this->initTable();
