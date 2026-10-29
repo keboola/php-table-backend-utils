@@ -241,6 +241,46 @@ CREATE VIEW %s.%s AS
         self::assertSame($special, $columns['id']->getDescription());
     }
 
+    public function testGetDefinitionsKeepsMultibyteComments(): void
+    {
+        $this->createSchema(self::TEST_SCHEMA);
+        $schema = SnowflakeQuote::quoteSingleIdentifier(self::TEST_SCHEMA);
+        $comment = str_repeat('界', 2048);
+        $this->connection->executeQuery(sprintf(
+            'CREATE TABLE %s.%s (%s INTEGER COMMENT %s) COMMENT = %s',
+            $schema,
+            SnowflakeQuote::quoteSingleIdentifier('long_comment_table'),
+            SnowflakeQuote::quoteSingleIdentifier('id'),
+            SnowflakeQuote::quote($comment),
+            SnowflakeQuote::quote($comment),
+        ));
+
+        $table = $this->schemaRef->getDefinitions()['long_comment_table'];
+        self::assertSame($comment, $table->getDescription());
+        foreach ($table->getColumnsDefinitions() as $column) {
+            self::assertSame($comment, $column->getDescription());
+        }
+    }
+
+    public function testGetDefinitionsOmitsMarkupComments(): void
+    {
+        $this->createSchema(self::TEST_SCHEMA);
+        $this->connection->executeQuery(sprintf(
+            'CREATE TABLE %s.%s (%s INTEGER COMMENT %s) COMMENT = %s',
+            SnowflakeQuote::quoteSingleIdentifier(self::TEST_SCHEMA),
+            SnowflakeQuote::quoteSingleIdentifier('markup_table'),
+            SnowflakeQuote::quoteSingleIdentifier('id'),
+            SnowflakeQuote::quote('<script>alert(1)</script>'),
+            SnowflakeQuote::quote('<script>alert(1)</script>'),
+        ));
+
+        $table = $this->schemaRef->getDefinitions()['markup_table'];
+        self::assertNull($table->getDescription());
+        foreach ($table->getColumnsDefinitions() as $column) {
+            self::assertNull($column->getDescription());
+        }
+    }
+
     public function testGetDefinitionsReadsViewComment(): void
     {
         $this->initTable();
