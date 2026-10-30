@@ -144,10 +144,10 @@ class SnowflakeTableQueryBuilder implements TableQueryBuilderInterface
     ): string {
         if ($validateTableName) {
             $this->assertTableName($tableName);
-        } elseif ($tableName === '' || !ctype_print($tableName)) {
+        } elseif ($tableName === '' || preg_match('/[\x00-\x1F\x7F]/', $tableName) === 1) {
             throw new QueryBuilderException(
                 sprintf(
-                    'Invalid table name %s: Name must be non-empty and contain only printable characters.',
+                    'Invalid table name %s: Name must be non-empty and contain no control characters.',
                     $tableName,
                 ),
                 self::INVALID_TABLE_NAME,
