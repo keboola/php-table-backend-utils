@@ -67,6 +67,26 @@ class SnowflakeTableQueryBuilderTest extends TestCase
         self::fail('Should fail because of invalid table name');
     }
 
+    public function testCreateTableWithQuotedTableName(): void
+    {
+        self::assertSame(
+            "CREATE TABLE \"testDb\".\"a.b\"\n(\n\n);",
+            $this->qb->getCreateTableCommand('testDb', 'a.b', new ColumnCollection([]), validateTableName: false),
+        );
+    }
+
+    public function testCreateTableWithEmptyQuotedTableNameIsRejected(): void
+    {
+        $this->expectException(QueryBuilderException::class);
+        $this->qb->getCreateTableCommand('testDb', '', new ColumnCollection([]), validateTableName: false);
+    }
+
+    public function testCreateTableWithNonPrintableQuotedTableNameIsRejected(): void
+    {
+        $this->expectException(QueryBuilderException::class);
+        $this->qb->getCreateTableCommand('testDb', "a\nb", new ColumnCollection([]), validateTableName: false);
+    }
+
     public function testCreateTableWithColumnDescription(): void
     {
         $sql = $this->qb->getCreateTableCommand(
