@@ -75,13 +75,21 @@ class SnowflakeTableQueryBuilderTest extends TestCase
         );
     }
 
+    public function testCreateTableWithUtf8QuotedTableName(): void
+    {
+        self::assertSame(
+            "CREATE TABLE \"testDb\".\"tabuľka 表\"\n(\n\n);",
+            $this->qb->getCreateTableCommand('testDb', 'tabuľka 表', new ColumnCollection([]), validateTableName: false),
+        );
+    }
+
     public function testCreateTableWithEmptyQuotedTableNameIsRejected(): void
     {
         $this->expectException(QueryBuilderException::class);
         $this->qb->getCreateTableCommand('testDb', '', new ColumnCollection([]), validateTableName: false);
     }
 
-    public function testCreateTableWithNonPrintableQuotedTableNameIsRejected(): void
+    public function testCreateTableWithControlCharacterInQuotedTableNameIsRejected(): void
     {
         $this->expectException(QueryBuilderException::class);
         $this->qb->getCreateTableCommand('testDb', "a\nb", new ColumnCollection([]), validateTableName: false);
