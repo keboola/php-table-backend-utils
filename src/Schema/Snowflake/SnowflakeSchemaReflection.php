@@ -21,6 +21,9 @@ final class SnowflakeSchemaReflection implements SchemaReflectionInterface
 
     private string $schemaName;
 
+    // Bounds memory while staying past the 65535-byte Storage limit, so an oversize comment is still detectable.
+    public const MAX_COMMENT_LENGTH = 65536;
+
     private const TYPE_NEED_FALLBACK = [
         Snowflake::TYPE_BINARY,
         Snowflake::TYPE_VARBINARY,
@@ -86,10 +89,10 @@ final class SnowflakeSchemaReflection implements SchemaReflectionInterface
     public function getDefinitions(): array
     {
         $informationsQuery = sprintf(
-            // 16383 UTF-8 characters fit within the 65535-byte Storage TEXT limit.
             'SELECT TABLE_NAME, TABLE_TYPE, BYTES, ROW_COUNT, ' .
-            'LEFT(COMMENT, 16383) AS "COMMENT" ' .
+            'LEFT(COMMENT, %d) AS "COMMENT" ' .
             'FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = %s ORDER BY TABLE_NAME;',
+            self::MAX_COMMENT_LENGTH,
             SnowflakeQuote::quote($this->schemaName),
         );
 
@@ -123,11 +126,12 @@ SELECT
     END AS "type",
     COLUMN_DEFAULT AS "default",
     IS_NULLABLE AS "null?",
-    COALESCE(LEFT(COMMENT, 16383), '') AS "comment"
+    COALESCE(LEFT(COMMENT, %d), '') AS "comment"
 FROM INFORMATION_SCHEMA.COLUMNS
 WHERE table_schema = %s
 ORDER BY TABLE_NAME, ORDINAL_POSITION;
 SQL,
+            self::MAX_COMMENT_LENGTH,
             SnowflakeQuote::quote($this->schemaName),
         );
 

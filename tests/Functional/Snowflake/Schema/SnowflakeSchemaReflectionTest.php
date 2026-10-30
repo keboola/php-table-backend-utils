@@ -262,6 +262,30 @@ CREATE VIEW %s.%s AS
         }
     }
 
+    public function testGetDefinitionsKeepsCommentsOverStorageLimitDetectable(): void
+    {
+        $this->createSchema(self::TEST_SCHEMA);
+        $overStorageLimit = str_repeat('č', 32768);
+        $overReflectionBound = str_repeat('a', SnowflakeSchemaReflection::MAX_COMMENT_LENGTH + 1);
+        $this->connection->executeQuery(sprintf(
+            'CREATE TABLE %s.%s (%s INTEGER COMMENT %s) COMMENT = %s',
+            SnowflakeQuote::quoteSingleIdentifier(self::TEST_SCHEMA),
+            SnowflakeQuote::quoteSingleIdentifier('oversize_comment_table'),
+            SnowflakeQuote::quoteSingleIdentifier('id'),
+            SnowflakeQuote::quote($overReflectionBound),
+            SnowflakeQuote::quote($overStorageLimit),
+        ));
+
+        $table = $this->schemaRef->getDefinitions()['oversize_comment_table'];
+        self::assertSame($overStorageLimit, $table->getDescription());
+        foreach ($table->getColumnsDefinitions() as $column) {
+            self::assertSame(
+                substr($overReflectionBound, 0, SnowflakeSchemaReflection::MAX_COMMENT_LENGTH),
+                $column->getDescription(),
+            );
+        }
+    }
+
     public function testGetDefinitionsReadsViewComment(): void
     {
         $this->initTable();
