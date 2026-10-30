@@ -140,8 +140,16 @@ class SnowflakeTableQueryBuilder implements TableQueryBuilderInterface
         string $tableName,
         ColumnCollection $columns,
         array $primaryKeys = [],
+        bool $validateTableName = true,
     ): string {
-        $this->assertTableName($tableName);
+        if ($validateTableName) {
+            $this->assertTableName($tableName);
+        } elseif ($tableName === '' || !ctype_print($tableName)) {
+            throw new QueryBuilderException(
+                sprintf('Invalid table name %s: Name must be non-empty and contain only printable characters.', $tableName),
+                self::INVALID_TABLE_NAME,
+            );
+        }
 
         $columnsSqlDefinitions = [];
         $columnNames = [];
@@ -210,6 +218,7 @@ class SnowflakeTableQueryBuilder implements TableQueryBuilderInterface
     public function getCreateTableCommandFromDefinition(
         TableDefinitionInterface $definition,
         bool $definePrimaryKeys = self::CREATE_TABLE_WITHOUT_PRIMARY_KEYS,
+        bool $validateTableName = true,
     ): string {
         /** @phpstan-ignore instanceof.alwaysTrue, function.alreadyNarrowedType */
         assert($definition instanceof SnowflakeTableDefinition);
@@ -228,6 +237,7 @@ class SnowflakeTableQueryBuilder implements TableQueryBuilderInterface
             $definePrimaryKeys === self::CREATE_TABLE_WITH_PRIMARY_KEYS
                 ? $definition->getPrimaryKeysNames()
                 : [],
+            $validateTableName,
         );
 
         if ($definition->getDescription() === null) {
