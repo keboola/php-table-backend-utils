@@ -146,7 +146,10 @@ class SnowflakeTableQueryBuilder implements TableQueryBuilderInterface
             $this->assertTableName($tableName);
         } elseif ($tableName === '' || !ctype_print($tableName)) {
             throw new QueryBuilderException(
-                sprintf('Invalid table name %s: Name must be non-empty and contain only printable characters.', $tableName),
+                sprintf(
+                    'Invalid table name %s: Name must be non-empty and contain only printable characters.',
+                    $tableName,
+                ),
                 self::INVALID_TABLE_NAME,
             );
         }
