@@ -45,8 +45,15 @@ final class SnowflakeSchemaReflection implements SchemaReflectionInterface
      */
     private array $fallbackTableCache = [];
 
-    public function __construct(Connection $connection, string $schemaName)
-    {
+    /**
+     * @param int|null $maxTotalCommentLength characters of table and column comments getDefinitions()
+     *     loads for the whole schema; null loads all of them
+     */
+    public function __construct(
+        Connection $connection,
+        string $schemaName,
+        private readonly ?int $maxTotalCommentLength = null,
+    ) {
         $this->schemaName = $schemaName;
         $this->connection = $connection;
     }
@@ -88,10 +95,15 @@ final class SnowflakeSchemaReflection implements SchemaReflectionInterface
      */
     public function getDefinitions(): array
     {
+        [$budgetCte, $budgetJoin, $commentsLoaded] = $this->commentBudgetSql();
+
         $informationsQuery = sprintf(
-            'SELECT TABLE_NAME, TABLE_TYPE, BYTES, ROW_COUNT, ' .
-            'LEFT(COMMENT, %d) AS "COMMENT" ' .
-            'FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = %s ORDER BY TABLE_NAME;',
+            '%1$sSELECT TABLE_NAME, TABLE_TYPE, BYTES, ROW_COUNT, ' .
+            'IFF(%3$s, LEFT(COMMENT, %4$d), NULL) AS "COMMENT", IFF(%3$s, 1, 0) AS "COMMENTS_LOADED" ' .
+            'FROM INFORMATION_SCHEMA.TABLES%2$s WHERE TABLE_SCHEMA = %5$s ORDER BY TABLE_NAME;',
+            $budgetCte,
+            $budgetJoin,
+            $commentsLoaded,
             self::MAX_COMMENT_LENGTH,
             SnowflakeQuote::quote($this->schemaName),
         );
@@ -101,6 +113,7 @@ final class SnowflakeSchemaReflection implements SchemaReflectionInterface
         // here is implemented same mapping as DESC TABLE uses
         $columnsQuery = sprintf(
             <<<SQL
+%1\$s
 SELECT 
     TABLE_NAME,
     COLUMN_NAME AS "name",
@@ -126,12 +139,16 @@ SELECT
     END AS "type",
     COLUMN_DEFAULT AS "default",
     IS_NULLABLE AS "null?",
-    COALESCE(LEFT(COMMENT, %d), '') AS "comment"
-FROM INFORMATION_SCHEMA.COLUMNS
-WHERE table_schema = %s
+    IFF(%2\$s, COALESCE(LEFT(COMMENT, %3\$d), ''), NULL) AS "comment",
+    IFF(%2\$s, 1, 0) AS "COMMENTS_LOADED"
+FROM INFORMATION_SCHEMA.COLUMNS%4\$s
+WHERE table_schema = %5\$s
 ORDER BY TABLE_NAME, ORDINAL_POSITION;
 SQL,
+            $budgetCte,
+            $commentsLoaded,
             self::MAX_COMMENT_LENGTH,
+            $budgetJoin,
             SnowflakeQuote::quote($this->schemaName),
         );
 
@@ -148,7 +165,8 @@ SQL,
          *     TABLE_TYPE: string,
          *     BYTES: int,
          *     ROW_COUNT: int,
-         *     COMMENT: string|null}> $informations */
+         *     COMMENT: string|null,
+         *     COMMENTS_LOADED: int|string}> $informations */
         $informations = $this->connection->fetchAllAssociative($informationsQuery);
 
         // short-circuit > no tables no need to continue
@@ -162,7 +180,8 @@ SQL,
          *     type: string,
          *     default: string,
          *     null?: string,
-         *     comment: string}> $columns */
+         *     comment: string|null,
+         *     COMMENTS_LOADED: int|string}> $columns */
         $columns = $this->connection->fetchAllAssociative($columnsQuery);
         /** @var array<int, array{
          *     created_on: string,
@@ -181,6 +200,7 @@ SQL,
         foreach ($informations as $information) {
             $tableKey = md5($information['TABLE_NAME']);
             $tables[$tableKey]['PROPS'] = $information;
+            $tables[$tableKey]['COMMENTS_LOADED'] = (int) $information['COMMENTS_LOADED'] === 1;
 
             switch (strtoupper($information['TABLE_TYPE'])) {
                 case 'BASE TABLE':
@@ -208,6 +228,14 @@ SQL,
             }
         }
 
+        // the budget is evaluated per query, so a schema change between the two queries can disagree
+        foreach ($columns as $column) {
+            $tableKey = md5($column['TABLE_NAME']);
+            if (array_key_exists($tableKey, $tables) && (int) $column['COMMENTS_LOADED'] !== 1) {
+                $tables[$tableKey]['COMMENTS_LOADED'] = false;
+            }
+        }
+
         foreach ($columns as $column) {
             $tableKey = md5($column['TABLE_NAME']);
             if (!array_key_exists($tableKey, $tables)) {
@@ -219,10 +247,18 @@ SQL,
             // array{TABLE_NAME: string, name: string, type: string, default: string, null?: string}.
             // @phpstan-ignore-next-line
             $column['null?'] = ($column['null?'] === 'YES' ? 'Y' : 'N');
+            if (!$tables[$tableKey]['COMMENTS_LOADED']) {
+                $column['comment'] = null;
+            }
+            unset($column['COMMENTS_LOADED']);
 
             if (in_array($column['type'], self::TYPE_NEED_FALLBACK, true)) {
                 assert(is_string($column['TABLE_NAME']) && is_string($column['name']));
-                $tables[$tableKey]['COLUMNS'][] = $this->fallbackColumnType($column['TABLE_NAME'], $column['name']);
+                $tables[$tableKey]['COLUMNS'][] = $this->fallbackColumnType(
+                    $column['TABLE_NAME'],
+                    $column['name'],
+                    $tables[$tableKey]['COMMENTS_LOADED'],
+                );
             } else {
                 $tables[$tableKey]['COLUMNS'][] = SnowflakeColumn::createFromDB($column);
             }
@@ -248,6 +284,7 @@ SQL,
             }
             $tableName = $table['PROPS']['TABLE_NAME'];
             $tableComment = $table['PROPS']['COMMENT'];
+            $commentsLoaded = $table['COMMENTS_LOADED'];
             $definitions[$tableName] = new SnowflakeTableDefinition(
                 $this->schemaName,
                 $tableName,
@@ -255,10 +292,54 @@ SQL,
                 new ColumnCollection($table['COLUMNS'] ?? []),
                 $table['PRIMARY_KEYS'] ?? [],
                 $table['PROPS']['TABLE_TYPE'],
-                $tableComment === null || $tableComment === '' ? null : $tableComment,
+                $tableComment === null || $tableComment === '' || !$commentsLoaded ? null : $tableComment,
+                $commentsLoaded,
             );
         }
         return $definitions;
+    }
+
+    /**
+     * Comments are loaded for whole tables in name order while their running total fits the budget;
+     * the rest of the schema gets none, so the memory taken by comments stays bounded.
+     *
+     * @return array{string, string, string} the CTE, the join and the "comments loaded" condition
+     */
+    private function commentBudgetSql(): array
+    {
+        if ($this->maxTotalCommentLength === null) {
+            return ['', '', 'TRUE'];
+        }
+
+        $cte = sprintf(
+            <<<SQL
+WITH COLUMN_COMMENT_SIZES AS (
+    SELECT TABLE_NAME AS SIZE_TABLE_NAME, SUM(COALESCE(LENGTH(LEFT(COMMENT, %1\$d)), 0)) AS COLUMNS_SIZE
+    FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA = %2\$s
+    GROUP BY TABLE_NAME
+), COMMENT_BUDGET AS (
+    SELECT
+        TABLE_NAME AS BUDGET_TABLE_NAME,
+        SUM(COALESCE(LENGTH(LEFT(COMMENT, %1\$d)), 0) + COALESCE(COLUMNS_SIZE, 0)) OVER (
+            ORDER BY TABLE_NAME ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+        ) <= %3\$d AS COMMENTS_WITHIN_BUDGET
+    FROM INFORMATION_SCHEMA.TABLES
+    LEFT JOIN COLUMN_COMMENT_SIZES ON SIZE_TABLE_NAME = TABLE_NAME
+    WHERE TABLE_SCHEMA = %2\$s
+)
+
+SQL,
+            self::MAX_COMMENT_LENGTH,
+            SnowflakeQuote::quote($this->schemaName),
+            $this->maxTotalCommentLength,
+        );
+
+        return [
+            $cte,
+            ' LEFT JOIN COMMENT_BUDGET ON BUDGET_TABLE_NAME = TABLE_NAME',
+            'COALESCE(COMMENTS_WITHIN_BUDGET, FALSE)',
+        ];
     }
 
     /**
@@ -267,7 +348,7 @@ SQL,
      * As a result, we must run DESC TABLE on tables that contain columns of these types in order
      * to retrieve all the necessary information to properly construct the SnowflakeColumn class.
      */
-    private function fallbackColumnType(string $tableName, string $columnName): SnowflakeColumn
+    private function fallbackColumnType(string $tableName, string $columnName, bool $commentsLoaded): SnowflakeColumn
     {
         $tableKey = md5($tableName);
         if (!array_key_exists($tableKey, $this->fallbackTableCache)) {
@@ -294,8 +375,13 @@ SQL,
             $this->fallbackTableCache[$tableKey] = array_column($tableDesc, null, 'name');
         }
 
+        $column = $this->fallbackTableCache[$tableKey][$columnName];
+        if (!$commentsLoaded) {
+            $column['comment'] = null;
+        }
+
         // Offset 'null?' does not exist on
         // @phpstan-ignore-next-line
-        return SnowflakeColumn::createFromDB($this->fallbackTableCache[$tableKey][$columnName]);
+        return SnowflakeColumn::createFromDB($column);
     }
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Keboola\TableBackendUtils\Functional\Snowflake\Schema;
 
 use Keboola\Datatype\Definition\Snowflake;
+use Keboola\TableBackendUtils\Column\ColumnInterface;
 use Keboola\TableBackendUtils\Column\Snowflake\SnowflakeColumn;
 use Keboola\TableBackendUtils\Escaping\Snowflake\SnowflakeQuote;
 use Keboola\TableBackendUtils\Schema\Snowflake\SnowflakeSchemaReflection;
@@ -284,6 +285,60 @@ CREATE VIEW %s.%s AS
                 $column->getDescription(),
             );
         }
+    }
+
+    public function testGetDefinitionsSkipsCommentsOverTheTotalBudget(): void
+    {
+        $this->createSchema(self::TEST_SCHEMA);
+        $schema = SnowflakeQuote::quoteSingleIdentifier(self::TEST_SCHEMA);
+        // 10 characters per table: 4 of the table comment, 3 of each column comment
+        foreach (['a_first', 'b_second', 'c_third'] as $tableName) {
+            $this->connection->executeQuery(sprintf(
+                'CREATE TABLE %s.%s (%s INTEGER COMMENT %s, %s BINARY COMMENT %s) COMMENT = %s',
+                $schema,
+                SnowflakeQuote::quoteSingleIdentifier($tableName),
+                SnowflakeQuote::quoteSingleIdentifier('id'),
+                SnowflakeQuote::quote('col'),
+                SnowflakeQuote::quote('raw'),
+                SnowflakeQuote::quote('bin'),
+                SnowflakeQuote::quote('tbl.'),
+            ));
+        }
+
+        $definitions = (new SnowflakeSchemaReflection($this->connection, self::TEST_SCHEMA, 15))->getDefinitions();
+
+        $loaded = $definitions['a_first'];
+        self::assertTrue($loaded->areDescriptionsLoaded());
+        self::assertSame('tbl.', $loaded->getDescription());
+        self::assertSame(
+            ['id' => 'col', 'raw' => 'bin'],
+            array_map(static fn($column) => $column->getDescription(), self::columnsByName($loaded)),
+        );
+
+        foreach (['b_second', 'c_third'] as $tableName) {
+            $skipped = $definitions[$tableName];
+            self::assertFalse($skipped->areDescriptionsLoaded());
+            self::assertNull($skipped->getDescription());
+            self::assertSame(
+                ['id' => null, 'raw' => null],
+                array_map(static fn($column) => $column->getDescription(), self::columnsByName($skipped)),
+            );
+            self::assertSame(['id', 'raw'], $skipped->getColumnsNames());
+        }
+    }
+
+    /**
+     * @return array<string, ColumnInterface>
+     */
+    private static function columnsByName(SnowflakeTableDefinition $table): array
+    {
+        $columns = [];
+        /** @var ColumnInterface $column */
+        foreach ($table->getColumnsDefinitions() as $column) {
+            $columns[$column->getColumnName()] = $column;
+        }
+
+        return $columns;
     }
 
     public function testGetDefinitionsReadsViewComment(): void
