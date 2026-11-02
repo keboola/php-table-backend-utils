@@ -299,7 +299,7 @@ CREATE VIEW %s.%s AS
                 SnowflakeQuote::quoteSingleIdentifier($tableName),
                 SnowflakeQuote::quoteSingleIdentifier('id'),
                 SnowflakeQuote::quote('col'),
-                SnowflakeQuote::quote('raw'),
+                SnowflakeQuote::quoteSingleIdentifier('raw'),
                 SnowflakeQuote::quote('bin'),
                 SnowflakeQuote::quote('tbl.'),
             ));
