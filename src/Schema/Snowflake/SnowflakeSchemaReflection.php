@@ -95,15 +95,15 @@ final class SnowflakeSchemaReflection implements SchemaReflectionInterface
      */
     public function getDefinitions(): array
     {
-        [$budgetCte, $budgetJoin, $commentsLoaded] = $this->commentBudgetSql();
+        $withinBudget = $this->commentsWithinBudgetSql();
+        $budgetLeft = $this->maxTotalCommentLength;
 
         $informationsQuery = sprintf(
-            '%1$sSELECT TABLE_NAME, TABLE_TYPE, BYTES, ROW_COUNT, ' .
-            'IFF(%3$s, LEFT(COMMENT, %4$d), NULL) AS "COMMENT", IFF(%3$s, 1, 0) AS "COMMENTS_LOADED" ' .
-            'FROM INFORMATION_SCHEMA.TABLES%2$s WHERE TABLE_SCHEMA = %5$s ORDER BY TABLE_NAME;',
-            $budgetCte,
-            $budgetJoin,
-            $commentsLoaded,
+            'SELECT TABLE_NAME, TABLE_TYPE, BYTES, ROW_COUNT, ' .
+            'IFF(%1$s, LEFT(COMMENT, %2$d), NULL) AS "COMMENT", ' .
+            'IFF(%1$s OR COALESCE(COMMENT, \'\') = \'\', 1, 0) AS "COMMENTS_LOADED" ' .
+            'FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = %3$s ORDER BY TABLE_NAME;',
+            $withinBudget,
             self::MAX_COMMENT_LENGTH,
             SnowflakeQuote::quote($this->schemaName),
         );
@@ -113,7 +113,6 @@ final class SnowflakeSchemaReflection implements SchemaReflectionInterface
         // here is implemented same mapping as DESC TABLE uses
         $columnsQuery = sprintf(
             <<<SQL
-%1\$s
 SELECT 
     TABLE_NAME,
     COLUMN_NAME AS "name",
@@ -139,16 +138,14 @@ SELECT
     END AS "type",
     COLUMN_DEFAULT AS "default",
     IS_NULLABLE AS "null?",
-    IFF(%2\$s, COALESCE(LEFT(COMMENT, %3\$d), ''), NULL) AS "comment",
-    IFF(%2\$s, 1, 0) AS "COMMENTS_LOADED"
-FROM INFORMATION_SCHEMA.COLUMNS%4\$s
-WHERE table_schema = %5\$s
+    IFF(%1\$s, COALESCE(LEFT(COMMENT, %2\$d), ''), NULL) AS "comment",
+    IFF(%1\$s OR COALESCE(COMMENT, '') = '', 1, 0) AS "COMMENTS_LOADED"
+FROM INFORMATION_SCHEMA.COLUMNS
+WHERE table_schema = %3\$s
 ORDER BY TABLE_NAME, ORDINAL_POSITION;
 SQL,
-            $budgetCte,
-            $commentsLoaded,
+            $withinBudget,
             self::MAX_COMMENT_LENGTH,
-            $budgetJoin,
             SnowflakeQuote::quote($this->schemaName),
         );
 
@@ -167,7 +164,7 @@ SQL,
          *     ROW_COUNT: int,
          *     COMMENT: string|null,
          *     COMMENTS_LOADED: int|string}> $informations */
-        $informations = $this->connection->fetchAllAssociative($informationsQuery);
+        $informations = $this->fetchWithinBudget($informationsQuery, 'COMMENT', $budgetLeft);
 
         // short-circuit > no tables no need to continue
         if (count($informations) === 0) {
@@ -182,7 +179,7 @@ SQL,
          *     null?: string,
          *     comment: string|null,
          *     COMMENTS_LOADED: int|string}> $columns */
-        $columns = $this->connection->fetchAllAssociative($columnsQuery);
+        $columns = $this->fetchWithinBudget($columnsQuery, 'comment', $budgetLeft);
         /** @var array<int, array{
          *     created_on: string,
          *     database_name: string,
@@ -228,7 +225,7 @@ SQL,
             }
         }
 
-        // the budget is evaluated per query, so a schema change between the two queries can disagree
+        // a table past the budget is loaded only when neither it nor any of its columns has a comment
         foreach ($columns as $column) {
             $tableKey = md5($column['TABLE_NAME']);
             if (array_key_exists($tableKey, $tables) && (int) $column['COMMENTS_LOADED'] !== 1) {
@@ -301,45 +298,71 @@ SQL,
 
     /**
      * Comments are loaded for whole tables in name order while their running total fits the budget;
-     * the rest of the schema gets none, so the memory taken by comments stays bounded.
+     * the rest of the schema gets none, so the memory taken by comments stays bounded. A table
+     * without comments loses nothing and is not reported as skipped.
      *
-     * @return array{string, string, string} the CTE, the join and the "comments loaded" condition
+     * @return string the condition on TABLE_NAME that selects the tables whose comments are loaded
      */
-    private function commentBudgetSql(): array
+    private function commentsWithinBudgetSql(): string
     {
         if ($this->maxTotalCommentLength === null) {
-            return ['', '', 'TRUE'];
+            return 'TRUE';
         }
 
-        $cte = sprintf(
+        $lastTableWithinBudget = $this->connection->fetchOne(sprintf(
             <<<SQL
 WITH COLUMN_COMMENT_SIZES AS (
     SELECT TABLE_NAME AS SIZE_TABLE_NAME, SUM(COALESCE(LENGTH(LEFT(COMMENT, %1\$d)), 0)) AS COLUMNS_SIZE
     FROM INFORMATION_SCHEMA.COLUMNS
     WHERE TABLE_SCHEMA = %2\$s
     GROUP BY TABLE_NAME
-), COMMENT_BUDGET AS (
+), RUNNING_SIZES AS (
     SELECT
-        TABLE_NAME AS BUDGET_TABLE_NAME,
+        TABLE_NAME,
         SUM(COALESCE(LENGTH(LEFT(COMMENT, %1\$d)), 0) + COALESCE(COLUMNS_SIZE, 0)) OVER (
             ORDER BY TABLE_NAME ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
-        ) <= %3\$d AS COMMENTS_WITHIN_BUDGET
+        ) AS RUNNING_SIZE
     FROM INFORMATION_SCHEMA.TABLES
     LEFT JOIN COLUMN_COMMENT_SIZES ON SIZE_TABLE_NAME = TABLE_NAME
     WHERE TABLE_SCHEMA = %2\$s
 )
-
+SELECT MAX(TABLE_NAME) FROM RUNNING_SIZES WHERE RUNNING_SIZE <= %3\$d;
 SQL,
             self::MAX_COMMENT_LENGTH,
             SnowflakeQuote::quote($this->schemaName),
             $this->maxTotalCommentLength,
-        );
+        ));
 
-        return [
-            $cte,
-            ' LEFT JOIN COMMENT_BUDGET ON BUDGET_TABLE_NAME = TABLE_NAME',
-            'COALESCE(COMMENTS_WITHIN_BUDGET, FALSE)',
-        ];
+        if (!is_string($lastTableWithinBudget)) {
+            return 'FALSE';
+        }
+
+        return sprintf('TABLE_NAME <= %s', SnowflakeQuote::quote($lastTableWithinBudget));
+    }
+
+    /**
+     * Enforces the budget on the fetched rows too: comments can grow after the budget query ran.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function fetchWithinBudget(string $query, string $commentKey, ?int &$budgetLeft): array
+    {
+        $rows = [];
+        foreach ($this->connection->iterateAssociative($query) as $row) {
+            $comment = $row[$commentKey];
+            if ($budgetLeft !== null && is_string($comment) && $comment !== '') {
+                $length = mb_strlen($comment);
+                if ($length > $budgetLeft) {
+                    $row[$commentKey] = null;
+                    $row['COMMENTS_LOADED'] = 0;
+                } else {
+                    $budgetLeft -= $length;
+                }
+            }
+            $rows[] = $row;
+        }
+
+        return $rows;
     }
 
     /**

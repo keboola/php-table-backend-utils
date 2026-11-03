@@ -304,6 +304,12 @@ CREATE VIEW %s.%s AS
                 SnowflakeQuote::quote('tbl.'),
             ));
         }
+        $this->connection->executeQuery(sprintf(
+            'CREATE TABLE %s.%s (%s INTEGER)',
+            $schema,
+            SnowflakeQuote::quoteSingleIdentifier('d_plain'),
+            SnowflakeQuote::quoteSingleIdentifier('id'),
+        ));
 
         $definitions = (new SnowflakeSchemaReflection($this->connection, self::TEST_SCHEMA, 15))->getDefinitions();
 
@@ -325,6 +331,10 @@ CREATE VIEW %s.%s AS
             );
             self::assertSame(['id', 'raw'], $skipped->getColumnsNames());
         }
+
+        // past the budget, but without a comment there is nothing to skip
+        self::assertTrue($definitions['d_plain']->areDescriptionsLoaded());
+        self::assertNull($definitions['d_plain']->getDescription());
     }
 
     /**
