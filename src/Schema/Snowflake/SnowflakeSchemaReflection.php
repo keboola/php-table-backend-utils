@@ -254,7 +254,7 @@ SQL,
                 $tables[$tableKey]['COLUMNS'][] = $this->fallbackColumnType(
                     $column['TABLE_NAME'],
                     $column['name'],
-                    $tables[$tableKey]['COMMENTS_LOADED'],
+                    $column['comment'],
                 );
             } else {
                 $tables[$tableKey]['COLUMNS'][] = SnowflakeColumn::createFromDB($column);
@@ -370,8 +370,10 @@ SQL,
      * self::TYPE_NEED_FALLBACK in INFORMATION_SCHEMA.COLUMNS (or anywhere else in INFORMATION_SCHEMA).
      * As a result, we must run DESC TABLE on tables that contain columns of these types in order
      * to retrieve all the necessary information to properly construct the SnowflakeColumn class.
+     *
+     * @param string|null $comment the comment already trimmed to the budget; DESC TABLE comments are discarded
      */
-    private function fallbackColumnType(string $tableName, string $columnName, bool $commentsLoaded): SnowflakeColumn
+    private function fallbackColumnType(string $tableName, string $columnName, ?string $comment): SnowflakeColumn
     {
         $tableKey = md5($tableName);
         if (!array_key_exists($tableKey, $this->fallbackTableCache)) {
@@ -395,13 +397,18 @@ SQL,
                 SnowflakeQuote::quoteSingleIdentifier($this->schemaName),
                 SnowflakeQuote::quoteSingleIdentifier($tableName),
             ));
-            $this->fallbackTableCache[$tableKey] = array_column($tableDesc, null, 'name');
+            $this->fallbackTableCache[$tableKey] = array_map(
+                // the comment is served from the budgeted INFORMATION_SCHEMA read, never from DESC TABLE
+                static function (array $row): array {
+                    $row['comment'] = null;
+                    return $row;
+                },
+                array_column($tableDesc, null, 'name'),
+            );
         }
 
         $column = $this->fallbackTableCache[$tableKey][$columnName];
-        if (!$commentsLoaded) {
-            $column['comment'] = null;
-        }
+        $column['comment'] = $comment;
 
         // Offset 'null?' does not exist on
         // @phpstan-ignore-next-line
