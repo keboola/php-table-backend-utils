@@ -251,6 +251,7 @@ SQL,
 
             if (in_array($column['type'], self::TYPE_NEED_FALLBACK, true)) {
                 assert(is_string($column['TABLE_NAME']) && is_string($column['name']));
+                assert($column['comment'] === null || is_string($column['comment']));
                 $tables[$tableKey]['COLUMNS'][] = $this->fallbackColumnType(
                     $column['TABLE_NAME'],
                     $column['name'],
