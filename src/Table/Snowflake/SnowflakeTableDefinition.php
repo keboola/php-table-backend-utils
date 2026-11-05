@@ -33,6 +33,7 @@ final class SnowflakeTableDefinition implements TableDefinitionInterface
         array $primaryKeysNames,
         private readonly TableType $tableType = TableType::TABLE,
         private readonly ?string $description = null,
+        private readonly bool $descriptionsLoaded = true,
     ) {
         $this->schemaName = $schemaName;
         $this->tableName = $tableName;
@@ -49,6 +50,15 @@ final class SnowflakeTableDefinition implements TableDefinitionInterface
     public function getDescription(): ?string
     {
         return $this->description;
+    }
+
+    /**
+     * False when the schema reflection skipped the comments of this table to stay within its comment
+     * budget: a null description then means unknown, not removed.
+     */
+    public function areDescriptionsLoaded(): bool
+    {
+        return $this->descriptionsLoaded;
     }
 
     public function getSchemaName(): string
