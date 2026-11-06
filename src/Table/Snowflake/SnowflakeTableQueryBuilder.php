@@ -388,6 +388,44 @@ class SnowflakeTableQueryBuilder implements TableQueryBuilderInterface
     }
 
     /**
+     * Sets or unsets column comments without reading the existing column definitions.
+     *
+     * @param array<array-key, string|null> $descriptions keyed by column name; null or '' unsets the comment
+     */
+    public function getUpdateColumnCommentsQuery(string $schemaName, string $tableName, array $descriptions): string
+    {
+        if ($descriptions === []) {
+            throw new QueryBuilderException(
+                'At least one column update is required.',
+                self::EMPTY_COLUMNS_TO_UPDATE,
+            );
+        }
+
+        $sqlParts = [];
+        foreach ($descriptions as $columnName => $description) {
+            $sqlParts[] = sprintf(
+                'COLUMN %s %s',
+                SnowflakeQuote::quoteSingleIdentifier((string) $columnName),
+                self::getColumnCommentSqlPart($description),
+            );
+        }
+
+        return sprintf(
+            'ALTER TABLE %s.%s MODIFY %s',
+            SnowflakeQuote::quoteSingleIdentifier($schemaName),
+            SnowflakeQuote::quoteSingleIdentifier($tableName),
+            implode(', ', $sqlParts),
+        );
+    }
+
+    private static function getColumnCommentSqlPart(?string $description): string
+    {
+        return $description === null || $description === ''
+            ? 'UNSET COMMENT'
+            : sprintf('COMMENT %s', SnowflakeQuote::quote(self::truncateDescription($description)));
+    }
+
+    /**
      * @param array{default: bool, nullable: bool, dataType: bool, description: bool}|null $updates
      * @return string[]
      */
@@ -522,10 +560,7 @@ class SnowflakeTableQueryBuilder implements TableQueryBuilderInterface
         }
 
         if ($this->shouldUpdateDescription($updates, $existingColumnDefinition, $desiredColumnDefinition)) {
-            $desiredDescription = $desiredColumnDefinition->getDescription();
-            $sqlParts[] = $desiredDescription === null || $desiredDescription === ''
-                ? 'UNSET COMMENT'
-                : sprintf('COMMENT %s', SnowflakeQuote::quote(self::truncateDescription($desiredDescription)));
+            $sqlParts[] = self::getColumnCommentSqlPart($desiredColumnDefinition->getDescription());
         }
 
         return $sqlParts;
