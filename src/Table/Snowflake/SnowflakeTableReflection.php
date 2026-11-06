@@ -313,6 +313,18 @@ final class SnowflakeTableReflection implements TableReflectionInterface
     }
 
     /**
+     * Table comment out of the cached table props, without the column and primary key reads
+     * of {@see getTableDefinition()}.
+     *
+     * @throws TableNotExistsReflectionException
+     */
+    public function getDescription(): ?string
+    {
+        $this->cacheTableProps();
+        return $this->description;
+    }
+
+    /**
      * @throws TableNotExistsReflectionException
      */
     public function isTemporary(): bool
