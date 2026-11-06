@@ -47,7 +47,7 @@ final class SnowflakeSchemaReflection implements SchemaReflectionInterface
 
     /**
      * @param int|null $maxTotalCommentLength characters of table and column comments getDefinitions()
-     *     loads for the whole schema; null loads all of them
+     *     loads for the whole schema; null loads all of them, 0 none
      */
     public function __construct(
         Connection $connection,
@@ -308,6 +308,9 @@ SQL,
     {
         if ($this->maxTotalCommentLength === null) {
             return 'TRUE';
+        }
+        if ($this->maxTotalCommentLength === 0) {
+            return 'FALSE';
         }
 
         $lastTableWithinBudget = $this->connection->fetchOne(sprintf(

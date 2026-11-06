@@ -351,6 +351,37 @@ CREATE VIEW %s.%s AS
         return $columns;
     }
 
+    public function testGetDefinitionsReadsNoCommentsWithZeroBudget(): void
+    {
+        $this->createSchema(self::TEST_SCHEMA);
+        $schema = SnowflakeQuote::quoteSingleIdentifier(self::TEST_SCHEMA);
+        $this->connection->executeQuery(sprintf(
+            'CREATE TABLE %s.%s (%s INTEGER COMMENT %s) COMMENT = %s',
+            $schema,
+            SnowflakeQuote::quoteSingleIdentifier('commented'),
+            SnowflakeQuote::quoteSingleIdentifier('id'),
+            SnowflakeQuote::quote('col'),
+            SnowflakeQuote::quote('tbl'),
+        ));
+        $this->connection->executeQuery(sprintf(
+            'CREATE TABLE %s.%s (%s INTEGER)',
+            $schema,
+            SnowflakeQuote::quoteSingleIdentifier('plain'),
+            SnowflakeQuote::quoteSingleIdentifier('id'),
+        ));
+
+        $definitions = (new SnowflakeSchemaReflection($this->connection, self::TEST_SCHEMA, 0))->getDefinitions();
+
+        $commented = $definitions['commented'];
+        self::assertFalse($commented->areDescriptionsLoaded());
+        self::assertNull($commented->getDescription());
+        self::assertSame(
+            ['id' => null],
+            array_map(static fn($column) => $column->getDescription(), self::columnsByName($commented)),
+        );
+        self::assertTrue($definitions['plain']->areDescriptionsLoaded());
+    }
+
     public function testGetDefinitionsReadsViewComment(): void
     {
         $this->initTable();
