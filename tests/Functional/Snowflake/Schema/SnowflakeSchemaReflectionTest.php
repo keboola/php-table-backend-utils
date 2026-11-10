@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Keboola\TableBackendUtils\Functional\Snowflake\Schema;
 
+use Doctrine\DBAL\Exception as DBALException;
 use Keboola\Datatype\Definition\Snowflake;
 use Keboola\TableBackendUtils\Column\ColumnInterface;
 use Keboola\TableBackendUtils\Column\Snowflake\SnowflakeColumn;
@@ -451,6 +452,50 @@ CREATE VIEW %s.%s AS
             self::assertSame(['ID_SRC'], $definitions[$backupTableName]->getPrimaryKeysNames());
         } finally {
             $this->cleanSchema($otherSchema);
+        }
+    }
+
+    public function testGetDefinitionsSkipsEventTable(): void
+    {
+        $this->initTable();
+        $this->connection->executeQuery(sprintf(
+            'CREATE VIEW %s.%s AS SELECT "first_name" FROM %s.%s',
+            SnowflakeQuote::quoteSingleIdentifier(self::TEST_SCHEMA),
+            SnowflakeQuote::quoteSingleIdentifier(self::VIEW_GENERIC),
+            SnowflakeQuote::quoteSingleIdentifier(self::TEST_SCHEMA),
+            SnowflakeQuote::quoteSingleIdentifier(self::TABLE_GENERIC),
+        ));
+        $this->createEventTable('events');
+
+        $definitions = $this->schemaRef->getDefinitions();
+
+        self::assertEqualsCanonicalizing([self::TABLE_GENERIC, self::VIEW_GENERIC], array_keys($definitions));
+        self::assertSame(3, $definitions[self::TABLE_GENERIC]->getColumnsDefinitions()->count());
+        self::assertSame(['events' => 'EVENT TABLE'], $this->schemaRef->getSkippedObjects());
+    }
+
+    public function testGetDefinitionsOfSchemaWithOnlyEventTable(): void
+    {
+        $this->createSchema(self::TEST_SCHEMA);
+        $this->createEventTable('events');
+
+        self::assertSame([], $this->schemaRef->getDefinitions());
+        self::assertSame(['events' => 'EVENT TABLE'], $this->schemaRef->getSkippedObjects());
+    }
+
+    private function createEventTable(string $name): void
+    {
+        try {
+            $this->connection->executeQuery(sprintf(
+                'CREATE EVENT TABLE %s.%s',
+                SnowflakeQuote::quoteSingleIdentifier(self::TEST_SCHEMA),
+                SnowflakeQuote::quoteSingleIdentifier($name),
+            ));
+        } catch (DBALException $e) {
+            if (str_contains($e->getMessage(), 'Insufficient privileges')) {
+                self::markTestSkipped('The test role cannot create an event table.');
+            }
+            throw $e;
         }
     }
 

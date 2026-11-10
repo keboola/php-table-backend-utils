@@ -29,6 +29,15 @@ final class SnowflakeSchemaReflection implements SchemaReflectionInterface
         Snowflake::TYPE_VARBINARY,
         Snowflake::TYPE_VECTOR,
     ];
+
+    // Snowflake objects listed in INFORMATION_SCHEMA.TABLES that Storage cannot represent as a table
+    private const SKIPPED_TABLE_TYPES = [
+        'EVENT TABLE',
+    ];
+
+    /** @var array<string, string> table name => TABLE_TYPE */
+    private array $skippedObjects = [];
+
     /**
      * @var array<string, array<string, array{name: string,
      *      type: string,
@@ -95,6 +104,7 @@ final class SnowflakeSchemaReflection implements SchemaReflectionInterface
      */
     public function getDefinitions(): array
     {
+        $this->skippedObjects = [];
         $withinBudget = $this->commentsWithinBudgetSql();
         $budgetLeft = $this->maxTotalCommentLength;
 
@@ -195,6 +205,10 @@ SQL,
         $tables = [];
 
         foreach ($informations as $information) {
+            if (in_array(strtoupper($information['TABLE_TYPE']), self::SKIPPED_TABLE_TYPES, true)) {
+                $this->skippedObjects[$information['TABLE_NAME']] = $information['TABLE_TYPE'];
+                continue;
+            }
             $tableKey = md5($information['TABLE_NAME']);
             $tables[$tableKey]['PROPS'] = $information;
             $tables[$tableKey]['COMMENTS_LOADED'] = (int) $information['COMMENTS_LOADED'] === 1;
@@ -295,6 +309,16 @@ SQL,
             );
         }
         return $definitions;
+    }
+
+    /**
+     * Objects the last getDefinitions() call left out because Storage cannot represent their type.
+     *
+     * @return array<string, string> table name => TABLE_TYPE
+     */
+    public function getSkippedObjects(): array
+    {
+        return $this->skippedObjects;
     }
 
     /**
