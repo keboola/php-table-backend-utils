@@ -8,10 +8,13 @@ use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Driver;
 use Doctrine\DBAL\Platforms\AbstractPlatform;
 use Exception;
+use Keboola\TableBackendUtils\Connection\Snowflake\Exception\PrivateKeyExportFailed;
 use Keboola\TableBackendUtils\Connection\Snowflake\Exception\PrivateKeyStringIsNotValid;
 
 class SnowflakeDriver implements Driver
 {
+    private const KEY_EXPORT_OPENSSL_CONFIG = __DIR__ . '/openssl-key-export.cnf';
+
     private ?string $certFilePath = null;
 
     /**
@@ -75,10 +78,24 @@ class SnowflakeDriver implements Driver
         }
 
         $pemPKCS8 = '';
-        openssl_pkey_export($privateKeyResource, $pemPKCS8);
+        if (!openssl_pkey_export($privateKeyResource, $pemPKCS8, null, ['config' => self::KEY_EXPORT_OPENSSL_CONFIG])) {
+            throw PrivateKeyExportFailed::export();
+        }
 
-        $privateKeyPath = tempnam(sys_get_temp_dir(), 'snowflake_private_key_' . uniqid()) . '.p8';
-        file_put_contents($privateKeyPath, $pemPKCS8);
+        // tempnam() creates the file with 0600; renaming keeps that mode for the key.
+        $tempPath = tempnam(sys_get_temp_dir(), 'snowflake_private_key_');
+        if ($tempPath === false) {
+            throw PrivateKeyExportFailed::tempFile();
+        }
+        $privateKeyPath = $tempPath . '.p8';
+        if (!rename($tempPath, $privateKeyPath)) {
+            @unlink($tempPath);
+            throw PrivateKeyExportFailed::tempFile();
+        }
+        if (file_put_contents($privateKeyPath, $pemPKCS8) === false) {
+            @unlink($privateKeyPath);
+            throw PrivateKeyExportFailed::write();
+        }
 
         return $privateKeyPath;
     }

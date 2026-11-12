@@ -1,0 +1,3 @@
+# Config for SnowflakeDriver's openssl_pkey_export(). It has no oid_section: PHP registers those
+# OIDs on every call, and concurrent registration under ZTS (FrankenPHP) fails with
+# "Problem creating object tsa_policy1=...".
