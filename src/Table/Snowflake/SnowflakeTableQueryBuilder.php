@@ -255,11 +255,17 @@ class SnowflakeTableQueryBuilder implements TableQueryBuilderInterface
             );
         }
 
-        return $this->buildCreateTableFromDefinition(
-            'CREATE TABLE',
+        return $this->appendDescription(
             $definition,
-            $definePrimaryKeys,
-            $validateTableName,
+            $this->getCreateTableCommand(
+                $definition->getSchemaName(),
+                $definition->getTableName(),
+                $definition->getColumnsDefinitions(),
+                $definePrimaryKeys === self::CREATE_TABLE_WITH_PRIMARY_KEYS
+                    ? $definition->getPrimaryKeysNames()
+                    : [],
+                $validateTableName,
+            ),
         );
     }
 
@@ -279,31 +285,23 @@ class SnowflakeTableQueryBuilder implements TableQueryBuilderInterface
             );
         }
 
-        return $this->buildCreateTableFromDefinition(
-            'CREATE OR REPLACE TABLE',
+        return $this->appendDescription(
             $definition,
-            $definePrimaryKeys,
-            $validateTableName,
+            $this->buildCreateTableCommand(
+                'CREATE OR REPLACE TABLE',
+                $definition->getSchemaName(),
+                $definition->getTableName(),
+                $definition->getColumnsDefinitions(),
+                $definePrimaryKeys === self::CREATE_TABLE_WITH_PRIMARY_KEYS
+                    ? $definition->getPrimaryKeysNames()
+                    : [],
+                $validateTableName,
+            ),
         );
     }
 
-    private function buildCreateTableFromDefinition(
-        string $createKeyword,
-        SnowflakeTableDefinition $definition,
-        bool $definePrimaryKeys,
-        bool $validateTableName,
-    ): string {
-        $sql = $this->buildCreateTableCommand(
-            $createKeyword,
-            $definition->getSchemaName(),
-            $definition->getTableName(),
-            $definition->getColumnsDefinitions(),
-            $definePrimaryKeys === self::CREATE_TABLE_WITH_PRIMARY_KEYS
-                ? $definition->getPrimaryKeysNames()
-                : [],
-            $validateTableName,
-        );
-
+    private function appendDescription(SnowflakeTableDefinition $definition, string $sql): string
+    {
         if ($definition->getDescription() === null) {
             return $sql;
         }
