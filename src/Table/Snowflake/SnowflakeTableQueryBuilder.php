@@ -142,6 +142,27 @@ class SnowflakeTableQueryBuilder implements TableQueryBuilderInterface
         array $primaryKeys = [],
         bool $validateTableName = true,
     ): string {
+        return $this->buildCreateTableCommand(
+            'CREATE TABLE',
+            $schemaName,
+            $tableName,
+            $columns,
+            $primaryKeys,
+            $validateTableName,
+        );
+    }
+
+    /**
+     * @param string[] $primaryKeys
+     */
+    private function buildCreateTableCommand(
+        string $createKeyword,
+        string $schemaName,
+        string $tableName,
+        ColumnCollection $columns,
+        array $primaryKeys,
+        bool $validateTableName,
+    ): string {
         if ($validateTableName) {
             $this->assertTableName($tableName);
         } elseif ($tableName === '' || preg_match('/[\x00-\x1F\x7F]/', $tableName) === 1) {
@@ -205,10 +226,11 @@ class SnowflakeTableQueryBuilder implements TableQueryBuilderInterface
 
         // brackets on single rows because in order to have much more beautiful query at the end
         return sprintf(
-            'CREATE TABLE %s.%s
+            '%s %s.%s
 (
 %s
 );',
+            $createKeyword,
             SnowflakeQuote::quoteSingleIdentifier($schemaName),
             SnowflakeQuote::quoteSingleIdentifier($tableName),
             $columnsSql,
@@ -233,7 +255,46 @@ class SnowflakeTableQueryBuilder implements TableQueryBuilderInterface
             );
         }
 
-        $sql = $this->getCreateTableCommand(
+        return $this->buildCreateTableFromDefinition(
+            'CREATE TABLE',
+            $definition,
+            $definePrimaryKeys,
+            $validateTableName,
+        );
+    }
+
+    /**
+     * Same as {@see getCreateTableCommandFromDefinition()}, but replaces an existing table of that name atomically.
+     * Temporary definitions are rejected: a temporary table has no persistent counterpart to replace.
+     */
+    public function getCreateOrReplaceTableCommandFromDefinition(
+        SnowflakeTableDefinition $definition,
+        bool $definePrimaryKeys = self::CREATE_TABLE_WITHOUT_PRIMARY_KEYS,
+        bool $validateTableName = true,
+    ): string {
+        if ($definition->isTemporary()) {
+            throw new QueryBuilderException(
+                'CREATE OR REPLACE is not supported for temporary tables.',
+                self::INVALID_TABLE_NAME,
+            );
+        }
+
+        return $this->buildCreateTableFromDefinition(
+            'CREATE OR REPLACE TABLE',
+            $definition,
+            $definePrimaryKeys,
+            $validateTableName,
+        );
+    }
+
+    private function buildCreateTableFromDefinition(
+        string $createKeyword,
+        SnowflakeTableDefinition $definition,
+        bool $definePrimaryKeys,
+        bool $validateTableName,
+    ): string {
+        $sql = $this->buildCreateTableCommand(
+            $createKeyword,
             $definition->getSchemaName(),
             $definition->getTableName(),
             $definition->getColumnsDefinitions(),
